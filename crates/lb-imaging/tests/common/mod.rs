@@ -40,3 +40,37 @@ pub fn noise(w: u32, h: u32, seed: u64) -> Rgba32FImage {
     let img = pattern::render(Pattern::Scene, seed, w, h);
     convert::to_working(&DynamicImage::ImageRgba8(img))
 }
+
+/// `red_eye_320x240`: skin-coloured background with two eyes whose irises are red.
+pub fn red_eye_320x240() -> Rgba32FImage {
+    let (w, h) = (320_u32, 240_u32);
+    let eyes = [(100.0_f32, 110.0_f32), (220.0, 110.0)];
+    let img = RgbaImage::from_fn(w, h, |x, y| {
+        let (fx, fy) = (x as f32 + 0.5, y as f32 + 0.5);
+        let mut rgb = [
+            (214.0 + 20.0 * fy / h as f32) as u8,
+            (166.0 + 10.0 * fx / w as f32) as u8,
+            140,
+        ];
+        for (cx, cy) in eyes {
+            let (dx, dy) = (fx - cx, fy - cy);
+            let d2 = dx * dx + dy * dy;
+            if (dx / 36.0).powi(2) + (dy / 22.0).powi(2) <= 1.0 {
+                rgb = [245, 245, 240];
+            }
+            if d2 <= 18.0 * 18.0 {
+                rgb = [215, 30, 28];
+            }
+            if d2 <= 8.0 * 8.0 {
+                rgb = [30, 6, 6];
+            }
+        }
+        Rgba([rgb[0], rgb[1], rgb[2], 255])
+    });
+    convert::to_working(&DynamicImage::ImageRgba8(img))
+}
+
+/// Top-left 160×120 crop of a fixture, used where noisy output would bloat golden files.
+pub fn crop_160x120(img: &Rgba32FImage) -> Rgba32FImage {
+    image::imageops::crop_imm(img, 0, 0, 160, 120).to_image()
+}
