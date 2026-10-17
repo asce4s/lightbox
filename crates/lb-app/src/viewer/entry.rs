@@ -365,6 +365,23 @@ pub fn entry_from_id(lb: &Lightbox, id: PhotoId) -> ViewerEntry {
     }
 }
 
+/// Why this path cannot be shown, if opening it should show an error card.
+#[must_use]
+pub fn entry_error(path: &Path) -> Option<&'static str> {
+    let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+    if format_for_extension(ext, viewer_caps()).is_none() {
+        return Some("Lightbox can't open this kind of file");
+    }
+    match path.metadata() {
+        Ok(meta) if meta.is_file() => None,
+        Ok(_) => Some("Lightbox can't open this kind of file"),
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            Some("Permission denied")
+        }
+        Err(_) => Some("File not found"),
+    }
+}
+
 fn media_of(path: &Path) -> MediaType {
     path.extension()
         .and_then(|e| e.to_str())

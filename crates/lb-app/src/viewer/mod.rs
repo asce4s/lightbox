@@ -2,15 +2,17 @@
 
 mod ambient;
 mod entry;
+mod loader;
 mod motion;
 mod service;
 mod transform;
 
 pub use ambient::{AmbientCache, bucket_stage};
 pub use entry::{
-    FolderRefresh, FolderSort, FolderWatch, NavSet, NavSource, ViewerEntry, entry_from_id,
-    list_folder,
+    FolderRefresh, FolderSort, FolderWatch, NavSet, NavSource, ViewerEntry, entry_error,
+    entry_from_id, list_folder,
 };
+pub use loader::{LoadLevel, MEMORY_BUDGET, MediaBytes, ViewerLoader};
 pub use service::ViewerService;
 
 pub use motion::{

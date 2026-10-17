@@ -5,7 +5,7 @@ use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
 use crate::viewer::{
     FolderRefresh, FolderWatch, Motion, MotionMode, NavSet, Presented, RectF, ViewerEntry,
-    entry_from_id,
+    entry_error, entry_from_id,
 };
 use lb_core::{Photo, PhotoId};
 use std::path::{Path, PathBuf};
@@ -109,6 +109,12 @@ impl ViewerVm {
     #[must_use]
     pub fn current_photo(&self) -> Option<PhotoId> {
         self.nav.current().photo
+    }
+
+    /// One-line reason the current path cannot be shown.
+    #[must_use]
+    pub fn current_error(&self) -> Option<&'static str> {
+        entry_error(&self.current_entry().path)
     }
 
     /// Re-reads the folder after a create or delete. Library lists stay as they are.
