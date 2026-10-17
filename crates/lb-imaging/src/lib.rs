@@ -4,5 +4,7 @@
 
 pub mod blur;
 pub mod color;
+pub mod convert;
+pub mod ops;
 
 pub use image::Rgba32FImage;
