@@ -29,6 +29,12 @@ impl LightboxWindow {
             .border_b_1()
             .border_color(theme.border)
             .child(
+                Button::new(ids::SLIDESHOW_BUTTON)
+                    .label("Slideshow")
+                    .tooltip("Play the selection or the whole view")
+                    .on_click(cx.listener(|this, _, window, cx| this.start_slideshow(window, cx))),
+            )
+            .child(
                 Button::new(ids::EXPORT_BUTTON)
                     .label("Export")
                     .disabled(!can_export)

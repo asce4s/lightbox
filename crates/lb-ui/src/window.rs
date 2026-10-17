@@ -37,6 +37,8 @@ pub enum Route {
     Viewer,
     /// Editor.
     Editor,
+    /// Full-window slideshow.
+    Slideshow,
 }
 
 /// A modal or popup drawn above the library.
@@ -102,6 +104,10 @@ pub struct LightboxWindow {
     pub(crate) editor: Option<crate::editor::EditorState>,
     pub(crate) viewport: (f32, f32),
     pub(crate) theme: ThemeChoice,
+    pub(crate) slideshow: Option<lb_app::vm::SlideshowState>,
+    pub(crate) slideshow_slider: Entity<SliderState>,
+    pub(crate) slideshow_fullscreen: bool,
+    pub(crate) slideshow_controls_shown: bool,
     last_anchor_row: Option<usize>,
     pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
     _subscriptions: Vec<Subscription>,
@@ -147,6 +153,8 @@ impl LightboxWindow {
                 cx.notify();
             }
         }));
+        let slideshow_slider = crate::slideshow::duration_slider(3, cx);
+        subscriptions.push(Self::slideshow_subscription(&slideshow_slider, cx));
         window.focus(&focus, cx);
         let events = app.events();
         let this = Self {
@@ -171,6 +179,10 @@ impl LightboxWindow {
             editor: None,
             viewport: TEST_WINDOW_SIZE,
             theme,
+            slideshow: None,
+            slideshow_slider,
+            slideshow_fullscreen: false,
+            slideshow_controls_shown: false,
             last_anchor_row: None,
             timeline_drag: None,
             _subscriptions: subscriptions,
@@ -251,7 +263,9 @@ impl LightboxWindow {
 
     /// Which screen is showing.
     pub fn route(&self) -> Route {
-        if self.editor.is_some() {
+        if self.slideshow.is_some() {
+            Route::Slideshow
+        } else if self.editor.is_some() {
             Route::Editor
         } else if self.viewer.is_some() {
             Route::Viewer
@@ -278,6 +292,7 @@ impl LightboxWindow {
     /// Drains application events and applies a due search. Called by the ticker and by tests.
     pub fn pump(&mut self, cx: &mut Context<Self>) {
         let mut changed = self.vm.tick();
+        changed |= self.tick_slideshow();
         let mut refresh_sidebar = false;
         let mut viewer_stale = false;
         let mut editor_stale = false;

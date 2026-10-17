@@ -37,6 +37,7 @@ impl Render for LightboxWindow {
             .text_color(theme.foreground)
             .text_sm();
         let root = match self.route() {
+            Route::Slideshow => root.child(self.render_slideshow(cx)),
             Route::Editor => root.child(self.render_editor(window, cx)),
             Route::Viewer => root.child(self.render_viewer(cx)),
             Route::Library => {
@@ -316,6 +317,10 @@ impl LightboxWindow {
             }
             Route::Editor => {
                 self.editor_key(key, m.shift, cmd, window, cx);
+                return;
+            }
+            Route::Slideshow => {
+                self.slideshow_key(key, window, cx);
                 return;
             }
             Route::Library => {}
