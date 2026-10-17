@@ -22,4 +22,4 @@ pub use library::{
 };
 pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
 pub use ports::{Opener, TrashBackend};
-pub use query::{GroupBy, Selection, SortOrder, SqlValue};
+pub use query::{GroupBy, PHOTO_DATE_SQL, Selection, SortOrder, SqlValue};

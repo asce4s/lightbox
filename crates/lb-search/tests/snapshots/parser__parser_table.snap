@@ -1,0 +1,360 @@
+---
+source: crates/lb-search/tests/parser.rs
+expression: out
+---
+""
+  sql:  
+  args: []
+  fts:  None
+"   "
+  sql:  
+  args: []
+  fts:  None
+"beach"
+  sql:  
+  args: []
+  fts:  Some("\"beach\"*")
+"bea"
+  sql:  
+  args: []
+  fts:  Some("\"bea\"*")
+"b"
+  sql:  
+  args: []
+  fts:  Some("\"b\"")
+"beach sunset"
+  sql:  
+  args: []
+  fts:  Some("\"beach\"* \"sunset\"*")
+"\"red car\""
+  sql:  
+  args: []
+  fts:  Some("\"red car\"")
+"\"unterminated"
+  sql:  
+  args: []
+  fts:  Some("\"unterminated\"")
+  diag: 0..13 missing closing quote
+"-beach"
+  sql:  p.id NOT IN (SELECT rowid FROM photos_fts WHERE photos_fts MATCH ?)
+  args: [Text("\"beach\"*")]
+  fts:  None
+"-\"red car\""
+  sql:  p.id NOT IN (SELECT rowid FROM photos_fts WHERE photos_fts MATCH ?)
+  args: [Text("\"red car\"")]
+  fts:  None
+"-"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..1 nothing to search for
+"tag:work"
+  sql:  (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE))
+  args: [Text("work")]
+  fts:  None
+"-tag:work"
+  sql:  NOT (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE))
+  args: [Text("work")]
+  fts:  None
+"tag:\"summer trip\""
+  sql:  (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE))
+  args: [Text("summer trip")]
+  fts:  None
+"tag:"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..4 "tag:" needs a value
+"TAG:Work"
+  sql:  (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE))
+  args: [Text("Work")]
+  fts:  None
+"album:Family"
+  sql:  (EXISTS (SELECT 1 FROM album_items ai JOIN albums al ON al.id = ai.album_id WHERE ai.photo_id = p.id AND al.name = ? COLLATE NOCASE))
+  args: [Text("Family")]
+  fts:  None
+"-album:Family"
+  sql:  NOT (EXISTS (SELECT 1 FROM album_items ai JOIN albums al ON al.id = ai.album_id WHERE ai.photo_id = p.id AND al.name = ? COLLATE NOCASE))
+  args: [Text("Family")]
+  fts:  None
+"folder:2021"
+  sql:  (f.path LIKE ? ESCAPE '\')
+  args: [Text("%2021%")]
+  fts:  None
+"folder:\"my photos\""
+  sql:  (f.path LIKE ? ESCAPE '\')
+  args: [Text("%my photos%")]
+  fts:  None
+"folder:100%_off"
+  sql:  (f.path LIKE ? ESCAPE '\')
+  args: [Text("%100\\%\\_off%")]
+  fts:  None
+"camera:\"Canon EOS\""
+  sql:  ((COALESCE(p.camera_make, '') || ' ' || COALESCE(p.camera_model, '')) LIKE ? ESCAPE '\')
+  args: [Text("%Canon EOS%")]
+  fts:  None
+"lens:50mm"
+  sql:  (p.lens LIKE ? ESCAPE '\')
+  args: [Text("%50mm%")]
+  fts:  None
+"person:\"Ana\""
+  sql:  (EXISTS (SELECT 1 FROM faces fa JOIN people pe ON pe.id = fa.person_id WHERE fa.photo_id = p.id AND pe.name LIKE ? ESCAPE '\'))
+  args: [Text("%Ana%")]
+  fts:  None
+"type:photo"
+  sql:  (p.media_type = ?)
+  args: [Text("image")]
+  fts:  None
+"type:video"
+  sql:  (p.media_type = ?)
+  args: [Text("video")]
+  fts:  None
+"type:audio"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..10 invalid value "audio" for "type"
+"ext:jpg"
+  sql:  (lower(p.file_name) LIKE ? ESCAPE '\')
+  args: [Text("%.jpg")]
+  fts:  None
+"ext:.PNG"
+  sql:  (lower(p.file_name) LIKE ? ESCAPE '\')
+  args: [Text("%.png")]
+  fts:  None
+"caption:holiday"
+  sql:  (p.caption LIKE ? ESCAPE '\')
+  args: [Text("%holiday%")]
+  fts:  None
+"name:IMG_"
+  sql:  (p.file_name LIKE ? ESCAPE '\')
+  args: [Text("%IMG\\_%")]
+  fts:  None
+"rating:3"
+  sql:  (p.rating = ?)
+  args: [Int(3)]
+  fts:  None
+"rating:>=3"
+  sql:  (p.rating >= ?)
+  args: [Int(3)]
+  fts:  None
+"rating:>3"
+  sql:  (p.rating > ?)
+  args: [Int(3)]
+  fts:  None
+"rating:<=2"
+  sql:  (p.rating <= ?)
+  args: [Int(2)]
+  fts:  None
+"rating:<1"
+  sql:  (p.rating < ?)
+  args: [Int(1)]
+  fts:  None
+"rating:=5"
+  sql:  (p.rating = ?)
+  args: [Int(5)]
+  fts:  None
+"rating:2..4"
+  sql:  (p.rating BETWEEN ? AND ?)
+  args: [Int(2), Int(4)]
+  fts:  None
+"rating:..2"
+  sql:  (p.rating BETWEEN ? AND ?)
+  args: [Int(0), Int(2)]
+  fts:  None
+"rating:abc"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..10 invalid value "abc" for "rating"
+"date:2023-06..2023-08"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("2023-06-01T00:00:00"), Text("2023-09-01T00:00:00")]
+  fts:  None
+"date:2023-06-15"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("2023-06-15T00:00:00"), Text("2023-06-16T00:00:00")]
+  fts:  None
+"date:2023-06"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("2023-06-01T00:00:00"), Text("2023-07-01T00:00:00")]
+  fts:  None
+"date:2023"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("2023-01-01T00:00:00"), Text("2024-01-01T00:00:00")]
+  fts:  None
+"date:2023-12.."
+  sql:  (COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ?)
+  args: [Text("2023-12-01T00:00:00")]
+  fts:  None
+"date:..2020-02-29"
+  sql:  (COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?)
+  args: [Text("2020-03-01T00:00:00")]
+  fts:  None
+"date:2023-02-30"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..15 invalid value "2023-02-30" for "date"
+"date:.."
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..7 invalid value ".." for "date"
+"date:9999-12-31"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("9999-12-31T00:00:00"), Text("10000-01-01T00:00:00")]
+  fts:  None
+"year:2019"
+  sql:  ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Text("2019-01-01T00:00:00"), Text("2020-01-01T00:00:00")]
+  fts:  None
+"year:19"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..7 invalid value "19" for "year"
+"month:6"
+  sql:  (CAST(strftime('%m', COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime'))) AS INTEGER) = ?)
+  args: [Int(6)]
+  fts:  None
+"month:June"
+  sql:  (CAST(strftime('%m', COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime'))) AS INTEGER) = ?)
+  args: [Int(6)]
+  fts:  None
+"month:13"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..8 invalid value "13" for "month"
+"starred:yes"
+  sql:  (p.starred = ?)
+  args: [Int(1)]
+  fts:  None
+"starred:no"
+  sql:  (p.starred = ?)
+  args: [Int(0)]
+  fts:  None
+"starred:maybe"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..13 invalid value "maybe" for "starred"
+"hidden:true"
+  sql:  (p.hidden = ?)
+  args: [Int(1)]
+  fts:  None
+  include: hidden=true missing=false
+"-hidden:true"
+  sql:  NOT (p.hidden = ?)
+  args: [Int(1)]
+  fts:  None
+"has:gps"
+  sql:  (p.gps_lat IS NOT NULL AND p.gps_lon IS NOT NULL)
+  args: []
+  fts:  None
+"has:caption"
+  sql:  (COALESCE(p.caption, '') <> '')
+  args: []
+  fts:  None
+"has:faces"
+  sql:  (EXISTS (SELECT 1 FROM faces fa WHERE fa.photo_id = p.id))
+  args: []
+  fts:  None
+"has:edits"
+  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id))
+  args: []
+  fts:  None
+"has:tags"
+  sql:  (EXISTS (SELECT 1 FROM photo_tags pt WHERE pt.photo_id = p.id))
+  args: []
+  fts:  None
+"-has:gps"
+  sql:  NOT (p.gps_lat IS NOT NULL AND p.gps_lon IS NOT NULL)
+  args: []
+  fts:  None
+"has:wings"
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..9 invalid value "wings" for "has"
+"is:starred"
+  sql:  (p.starred = 1)
+  args: []
+  fts:  None
+"is:hidden"
+  sql:  (p.hidden = 1)
+  args: []
+  fts:  None
+  include: hidden=true missing=false
+"is:edited"
+  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id))
+  args: []
+  fts:  None
+"is:video"
+  sql:  (p.media_type = ?)
+  args: [Text("video")]
+  fts:  None
+"is:photo"
+  sql:  (p.media_type = ?)
+  args: [Text("image")]
+  fts:  None
+"is:missing"
+  sql:  (p.status = ?)
+  args: [Text("missing")]
+  fts:  None
+  include: hidden=false missing=true
+"-is:missing"
+  sql:  NOT (p.status = ?)
+  args: [Text("missing")]
+  fts:  None
+"is:unreadable"
+  sql:  (p.status = ?)
+  args: [Text("unreadable")]
+  fts:  None
+"colour:red"
+  sql:  
+  args: []
+  fts:  Some("\"colour red\"")
+  diag: 0..10 unknown filter "colour"
+"beach rating:>=3 year:2021"
+  sql:  (p.rating >= ?) AND ((COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) >= ? AND COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime')) < ?))
+  args: [Int(3), Text("2021-01-01T00:00:00"), Text("2022-01-01T00:00:00")]
+  fts:  Some("\"beach\"*")
+"beach -tag:work \"red car\" has:gps"
+  sql:  NOT (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE)) AND (p.gps_lat IS NOT NULL AND p.gps_lon IS NOT NULL)
+  args: [Text("work")]
+  fts:  Some("\"beach\"* \"red car\"")
+"http://example.com"
+  sql:  
+  args: []
+  fts:  Some("\"http //example.com\"")
+  diag: 0..18 unknown filter "http"
+"12:30"
+  sql:  
+  args: []
+  fts:  Some("\"12:30\"*")
+"a\"b"
+  sql:  
+  args: []
+  fts:  Some("\"a\"\"b\"*")
+"'; DROP TABLE photos; --"
+  sql:  
+  args: []
+  fts:  Some("\"DROP\"* \"TABLE\"* \"photos;\"*")
+  diag: 0..2 nothing to search for
+  diag: 22..24 nothing to search for
+"tag:x' OR 1=1 --"
+  sql:  (EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id AND t.name = ? COLLATE NOCASE))
+  args: [Text("x'")]
+  fts:  Some("\"OR\"* \"1=1\"*")
+  diag: 14..16 nothing to search for
+"名前 écran"
+  sql:  
+  args: []
+  fts:  Some("\"名前\"* \"écran\"*")
+"..."
+  sql:  
+  args: []
+  fts:  None
+  diag: 0..3 nothing to search for

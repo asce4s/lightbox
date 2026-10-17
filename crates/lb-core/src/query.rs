@@ -3,6 +3,11 @@
 use crate::{PhotoId, error::string_enum};
 use indexmap::IndexSet;
 
+/// SQL expression (over `photos p`) for the date a photo is sorted and filtered by: the capture
+/// time, or the file's modification time in local time when the capture time is unknown.
+pub const PHOTO_DATE_SQL: &str =
+    "COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime'))";
+
 /// A bound SQL parameter produced by the search planner and executed by the catalog.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SqlValue {

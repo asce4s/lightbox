@@ -78,8 +78,7 @@ pub struct QueryRow {
     pub date: NaiveDateTime,
 }
 
-const DATE_EXPR: &str =
-    "COALESCE(p.taken_at, strftime('%Y-%m-%dT%H:%M:%S', p.file_mtime, 'unixepoch', 'localtime'))";
+const DATE_EXPR: &str = lb_core::PHOTO_DATE_SQL;
 
 fn to_value(v: &SqlValue) -> Value {
     match v {
