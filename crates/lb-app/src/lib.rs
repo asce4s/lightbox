@@ -5,6 +5,7 @@ mod albums;
 mod edits;
 mod error;
 mod events;
+mod export;
 mod files;
 mod history;
 mod library;
@@ -21,6 +22,10 @@ pub use albums::AlbumService;
 pub use edits::EditService;
 pub use error::{AppError, Result};
 pub use events::{AppEvent, COALESCE_WINDOW, EventBus};
+pub use export::{
+    CollisionPolicy, ExportFormat, ExportHandle, ExportOptions, ExportReport, ExportService,
+    ExportSize, ExportedFile, MetadataPolicy,
+};
 pub use files::{DeleteReport, MoveReport};
 pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
 pub use library::LibraryService;
