@@ -391,3 +391,31 @@ fn data_survives_reopen_and_last_handle_drop_stops_writer() {
         .unwrap();
     assert_eq!(n, 2);
 }
+
+#[test]
+fn dropping_the_catalog_checkpoints_the_wal() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("catalog.sqlite3");
+    let catalog = Catalog::open(&path).unwrap();
+    catalog
+        .write(|c| Ok(c.execute("INSERT INTO settings VALUES ('k', '1')", [])?))
+        .unwrap();
+    catalog
+        .read(|c| Ok(c.query_row("SELECT 1", [], |r| r.get::<_, i64>(0))?))
+        .unwrap();
+    drop(catalog);
+
+    let mut files: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    files.sort();
+    assert_eq!(files, ["catalog.sqlite3"], "no -wal/-shm left behind");
+    let raw =
+        rusqlite::Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .unwrap();
+    let n: i64 = raw
+        .query_row("SELECT COUNT(*) FROM settings", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 1, "the main file alone holds the data");
+}

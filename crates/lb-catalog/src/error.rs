@@ -30,6 +30,9 @@ pub enum CatalogError {
     /// A tag name failed validation.
     #[error(transparent)]
     InvalidTagName(#[from] lb_core::InvalidTagName),
+    /// A backup failed its integrity check.
+    #[error("catalog backup failed integrity check: {0}")]
+    BackupInvalid(String),
     /// The database was created by a newer version of Lightbox.
     #[error("catalog schema is newer than this version of Lightbox supports")]
     SchemaTooNew,

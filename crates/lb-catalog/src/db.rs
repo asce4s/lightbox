@@ -50,6 +50,9 @@ struct Inner {
 
 impl Drop for Inner {
     fn drop(&mut self) {
+        // Close the readers first: the last connection to close checkpoints and deletes the WAL,
+        // and only the read-write connection can do that. This leaves a self-contained .sqlite3.
+        self.pool_rx.try_iter().for_each(drop);
         drop(self.writer_tx.take());
         if let Some(handle) = self.writer_thread.take()
             && handle.join().is_err()
