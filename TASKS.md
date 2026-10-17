@@ -62,7 +62,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - [x] **M6.6** ExportService. Tests: `export_resizes_long_edge`, `export_applies_edits`, `export_strip_gps`, `export_keep_exif_resets_orientation`, `export_watermark_present`, `export_collision_policy`, `export_cancel_cleans_temp`.
 - [x] **M6.7** View-models (Library, Viewer, Editor, ExportDialog). Tests: `vm_selection_click_shift_ctrl`, `vm_keyboard_navigation_grid`, `vm_editor_slider_preview_then_commit`, `vm_scroll_anchor_preserved_on_resort`.
 - [x] **M6.8** CLI (SPEC §8). Tests: `cli_<subcommand>_e2e` for every subcommand, `cli_exit_codes`.
-- [ ] **M6.9** Error mapping & crash log. Tests: `user_messages_for_all_error_variants`, `atomic_write_leaves_no_partial_on_error`.
+- [x] **M6.9** Error mapping & crash log. Tests: `user_messages_for_all_error_variants`, `atomic_write_leaves_no_partial_on_error`.
 
 ## M7 — UI shell: library (P0)
 
@@ -155,6 +155,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M6.6 · ExportService (sync `run`/`export_now` and a Foreground job `start` with progress events and cancel); EXIF block rewriting in `lb-media::exif_copy` (orientation reset, GPS wipe, thumbnail drop, JPEG segment embed/map); `lb-imaging::text` watermark with bundled Inter (OFL) · tests: `export_resizes_long_edge`, `export_applies_edits`, `export_strip_gps`, `export_keep_exif_resets_orientation`, `export_watermark_present`, `export_collision_policy`, `export_cancel_cleans_temp`, `export_job_reports_progress_and_finishes`, `export_png_and_failures`, 5 `exif_copy` unit tests, 2 watermark unit tests
 2026-10-17 · M6.7 · `lb-app::vm`: `LibraryVm` (selection, keyboard navigation, tray, chips/search with 150 ms clock debounce, zoom/columns, scroll anchor, organize intents), `GridLayout` row virtualization, `ViewerVm`, `EditorVm` (draft sliders, one-op commit, undo/redo/revert, before/after), `ExportDialogVm` (validation, job phases); `AppError::user_message` · tests: `vm_selection_click_shift_ctrl`, `vm_keyboard_navigation_grid`, `vm_editor_slider_preview_then_commit`, `vm_scroll_anchor_preserved_on_resort`, `vm_library_intents_and_events`, `vm_grid_layout_virtualizes_rows`, `vm_search_debounce_uses_the_clock`, `vm_viewer_navigation_and_zoom`, `vm_export_dialog_validation_and_run`
 2026-10-17 · M6.8 · M6.8 · lightbox-cli (roots/scan/query/star/rate/tag/album/edit/render/export/thumbs/doctor), --json output, exit codes 0/1/2, Lightbox::doctor · 13 cli_*_e2e tests
+2026-10-17 · M6.9 · M6.9 · atomic write helper (temp+fsync+rename), crash log writer + panic hook + pending/dismiss, exhaustive AppError user-message test · user_messages_for_all_error_variants, atomic_write_leaves_no_partial_on_error, crash_log_is_written_and_reported_until_dismissed
 
 ## Decisions
 
@@ -260,6 +261,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - 2026-10-17 · `AppError::user_message` · implemented early (needed by the VMs); M6.9 adds the exhaustive test and crash log.
 - M6.8: `collage`, `dupes`, `picasa-import` CLI subcommands arrive with their services (M9.4, M9.6, M10.4) together with their `cli_<subcommand>_e2e` tests. `scan --wait` is accepted and is a no-op (CLI uses inline jobs). `export --strip-gps` => KeepExifNoGps, otherwise KeepAll. Query positional allows hyphen-leading text (`-tag:x`).
 - M6.8: `is:edited` / `has:edits` now mean "non-empty edit stack" (`json_array_length(ops_json) > 0`) because a row persists after revert/undo to hold the redo stack. Parser snapshot regenerated for this SQL change only. `QuerySource::RecentlyEdited` in lb-catalog is unchanged (ops_json is opaque there).
+- M6.9: crash logs live in `{data}/crash-<utc>-<pid>.log`; `install_panic_hook(data_dir)` must be called by the app binary at startup (M7.1) and `pending_crash_logs` drives the next-start notice. Existing ad-hoc temp+rename code (files.rs, thumbs cache, export) is kept; new writers use `write_atomic`.
 
 ## Blockers
 
