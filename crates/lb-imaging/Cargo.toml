@@ -11,3 +11,16 @@ workspace = true
 [dependencies]
 lb-core = { path = "../lb-core" }
 lb-media = { path = "../lb-media" }
+image = { workspace = true }
+rayon = { workspace = true }
+blake3 = { workspace = true }
+rand_pcg = { workspace = true }
+rand_core = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+lb-core = { path = "../lb-core", features = ["test-strategies"] }
+lb-testkit = { path = "../lb-testkit" }
+image = { workspace = true, features = ["png", "jpeg"] }
+proptest = { workspace = true }

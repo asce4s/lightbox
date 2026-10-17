@@ -1,2 +1,8 @@
 //! Non-destructive edit pipeline, compositing, export encoding and collage rendering.
 #![warn(missing_docs)]
+#![allow(clippy::chunks_exact_to_as_chunks)]
+
+pub mod blur;
+pub mod color;
+
+pub use image::Rgba32FImage;

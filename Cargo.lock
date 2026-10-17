@@ -3936,8 +3936,17 @@ dependencies = [
 name = "lb-imaging"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "image",
  "lb-core",
  "lb-media",
+ "lb-testkit",
+ "proptest",
+ "rand_core 0.10.1",
+ "rand_pcg",
+ "rayon",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
