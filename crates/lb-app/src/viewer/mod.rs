@@ -1,7 +1,10 @@
 //! UI-agnostic viewer: geometry, motion, navigation and loading (SPEC-VIEWER).
 
+mod ambient;
 mod motion;
 mod transform;
+
+pub use ambient::{AmbientCache, bucket_stage};
 
 pub use motion::{
     LayerState, Motion, MotionMode, Presented, ease_in_cubic, ease_in_out_cubic, ease_out_cubic,

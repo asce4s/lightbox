@@ -30,6 +30,7 @@ lb-faces = { path = "../lb-faces", optional = true }
 lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
+blake3 = { workspace = true }
 chrono = { workspace = true }
 opener = { workspace = true }
 trash = { workspace = true }
