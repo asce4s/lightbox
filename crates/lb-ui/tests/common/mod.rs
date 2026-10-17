@@ -181,3 +181,51 @@ pub const CTRL: Modifiers = Modifiers {
     platform: false,
     function: false,
 };
+
+/// Presses the left button at `position` without releasing it.
+pub fn mouse_down(window: &mut Window, position: gpui_kit::Point<gpui_kit::Pixels>, cx: &mut App) {
+    window.render_frame(cx);
+    window.dispatch_event(
+        MouseDownEvent {
+            button: MouseButton::Left,
+            position,
+            modifiers: Modifiers::default(),
+            click_count: 1,
+            first_mouse: false,
+        }
+        .to_platform_input(),
+        cx,
+    );
+}
+
+/// Moves the pointer with the left button held.
+pub fn mouse_drag_to(
+    window: &mut Window,
+    position: gpui_kit::Point<gpui_kit::Pixels>,
+    cx: &mut App,
+) {
+    window.dispatch_event(
+        gpui_kit::MouseMoveEvent {
+            position,
+            pressed_button: Some(MouseButton::Left),
+            modifiers: Modifiers::default(),
+        }
+        .to_platform_input(),
+        cx,
+    );
+}
+
+/// Releases the left button at `position`.
+pub fn mouse_up(window: &mut Window, position: gpui_kit::Point<gpui_kit::Pixels>, cx: &mut App) {
+    window.dispatch_event(
+        MouseUpEvent {
+            button: MouseButton::Left,
+            position,
+            modifiers: Modifiers::default(),
+            click_count: 1,
+        }
+        .to_platform_input(),
+        cx,
+    );
+    window.render_frame(cx);
+}

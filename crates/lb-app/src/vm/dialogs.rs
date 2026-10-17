@@ -9,6 +9,8 @@ use lb_core::PhotoId;
 pub enum ConfirmAction {
     /// Move photos to the system trash.
     Delete(Vec<PhotoId>),
+    /// Remove every edit of a photo (one undoable step).
+    Revert(PhotoId),
 }
 
 /// A yes/no question with the action it guards.
@@ -45,6 +47,16 @@ impl ConfirmVm {
         }
     }
 
+    /// Asks before removing all edits of `id`.
+    pub fn revert(id: PhotoId) -> Self {
+        Self {
+            title: "Revert to original?".to_owned(),
+            message: "Remove all edits from this photo. You can undo this with Redo.".to_owned(),
+            ok_label: "Revert".to_owned(),
+            action: ConfirmAction::Revert(id),
+        }
+    }
+
     /// Dialog title.
     pub fn title(&self) -> &str {
         &self.title
@@ -69,6 +81,10 @@ impl ConfirmVm {
     pub fn accept(&self, lb: &Lightbox) -> Result<usize> {
         match &self.action {
             ConfirmAction::Delete(ids) => Ok(lb.photos().delete(ids)?.deleted.len()),
+            ConfirmAction::Revert(id) => {
+                lb.edits().revert(*id)?;
+                Ok(1)
+            }
         }
     }
 }

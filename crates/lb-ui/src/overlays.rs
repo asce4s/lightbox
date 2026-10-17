@@ -86,6 +86,16 @@ impl LightboxWindow {
     /// Opens the export dialog for the target photos.
     pub fn open_export(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let ids = self.vm.target_ids();
+        self.open_export_for(ids, window, cx);
+    }
+
+    /// Opens the export dialog for `ids`.
+    pub fn open_export_for(
+        &mut self,
+        ids: Vec<PhotoId>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if ids.is_empty() {
             return;
         }
@@ -118,11 +128,15 @@ impl LightboxWindow {
         let vm = vm.clone();
         let result = vm.accept(&self.app);
         if let Some(n) = self.report(result, cx) {
-            let ConfirmAction::Delete(_) = vm.action();
-            self.toast = Some(format!(
-                "Moved {n} photo{} to the trash",
-                if n == 1 { "" } else { "s" }
-            ));
+            match vm.action() {
+                ConfirmAction::Delete(_) => {
+                    self.toast = Some(format!(
+                        "Moved {n} photo{} to the trash",
+                        if n == 1 { "" } else { "s" }
+                    ));
+                }
+                ConfirmAction::Revert(_) => self.editor_changed(cx),
+            }
         }
         self.close_overlay(window, cx);
         self.refresh_all(cx);
