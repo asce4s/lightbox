@@ -9,3 +9,10 @@ publish = false
 workspace = true
 
 [dependencies]
+chrono = { workspace = true }
+indexmap = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
