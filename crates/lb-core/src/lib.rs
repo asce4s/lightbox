@@ -1,12 +1,16 @@
 //! Domain types, ids, errors and the settings model. Performs no I/O.
 #![warn(missing_docs)]
 
+mod edit;
 mod error;
 mod ids;
 mod library;
 mod photo;
 mod query;
 
+#[cfg(feature = "test-strategies")]
+pub use edit::strategies;
+pub use edit::{EditError, EditOp, EditStack, NormRect, RetouchSpot};
 pub use error::ParseEnumError;
 pub use ids::{AlbumId, FaceId, FolderId, JobId, PersonId, PhotoId, RootId, TagId};
 pub use library::{

@@ -3908,8 +3908,10 @@ dependencies = [
 name = "lb-core"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "chrono",
  "indexmap",
+ "proptest",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
