@@ -18,7 +18,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M1 — Catalog (P0)
 
-- [ ] **M1.1** Domain types & ids in `lb-core` (SPEC §5.1, §5.3). Tests: `ids_serde_transparent`, `sort_order_roundtrip`.
+- [x] **M1.1** Domain types & ids in `lb-core` (SPEC §5.1, §5.3). Tests: `ids_serde_transparent`, `sort_order_roundtrip`.
 - [ ] **M1.2** Schema V1 + `rusqlite_migration`; writer thread + read pool; WAL. Tests: `migrations_apply_on_empty_db`, `migrate_from_v1_fixture`, `foreign_keys_enforced`, `writer_serializes_concurrent_writes`.
 - [ ] **M1.3** Repositories: roots, folders, photos (upsert batch, get_many, by path, by quick_key), edits, albums (+ fractional positions), tags, settings. Tests: `photo_upsert_batch_500`, `get_many_preserves_order`, `album_reorder_fractional_positions`, `album_renormalize_positions`, `tag_normalization`.
 - [ ] **M1.4** FTS5 maintenance + `rebuild_fts`. Tests: `fts_updated_on_caption_tag_album_change`, `fts_incremental_equals_rebuild`.
@@ -126,6 +126,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M0.1 · Workspace with 16 crates + apps/lightbox + xtask stub, toolchain 1.99.1, workspace deps pinned exact, lints (unwrap/expect denied), `.cargo` xtask alias, Cargo.lock committed · no tests (scaffold); verified fmt, clippy -D warnings, test, doc, lb-app --no-default-features, and that `unwrap` in a lib is rejected by clippy
 2026-10-17 · M0.2 · `xtask` with `ci` (SPEC §13 steps 1–9, fail-fast, loud SKIPPED summary), stubs for fixtures/goldens/perf/models · tests `ci_plan_lists_spec_steps_in_order`, `ci_stops_at_first_failure`, `ci_reports_skipped_steps_loudly_but_stays_green`, `xtask_dispatches_all_subcommands`. Skipped for now: fixtures (until M0.5), cargo deny (until M0.7; fails instead of skipping when `CI` env is set)
 2026-10-17 · M0.3 · dependency-rule checker in `xtask/src/deps.rs` over `cargo metadata --no-deps`; also enforces rusqlite only in lb-catalog, gpui-kit only in lb-ui, no direct gpui/gpui-component, lb-testkit dev-only · tests `xtask_dependency_rules_detect_violation`, `_accept_valid_graph`, `_reject_unknown_workspace_crate`, `_reject_malformed_json`
+2026-10-17 · M1.1 · `lb-core` ids (PhotoId, FolderId, AlbumId, TagId, PersonId, FaceId, JobId: `#[repr(transparent)]` + serde transparent), `MediaType`, `Format`, `PhotoStatus`, `GeoPoint`, `Photo`, `SortOrder`, `GroupBy`, `Selection`, `ParseEnumError` · tests `ids_serde_transparent`, `ids_extremes_and_ordering`, `sort_order_roundtrip`, `group_by_roundtrip`, `selection_keeps_insertion_order_and_roundtrips`, `schema_check_values_match_enum_strings`, `photo_serde_roundtrip`
 
 ## Decisions
 
@@ -149,6 +150,9 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - 2026-10-17 · lb-ui entry point · `lb_ui::run()` owns the GPUI bootstrap so `apps/lightbox` depends only on lb-app + lb-ui (SPEC §4.2); `ids` currently holds only `HELLO_LABEL` and grows with each UI task.
 - 2026-10-17 · deny.toml · extra licenses allowed beyond the §13 list: `0BSD` (enum-iterator) and `CC0-1.0` (notify, hexf-parse, tiny-keccak) · both are permissive public-domain-style licenses required by the GPUI/notify trees; GPL/AGPL stay denied by the allow-list. `[advisories] unmaintained = "workspace"` because RUSTSEC unmaintained notices for `instant`, `paste`, `rustybuzz`, `ttf-parser` come only transitively through gpui-kit and cannot be fixed here; vulnerability/yanked checks still cover the whole tree. On `CI` env, xtask fails (not skips) if cargo-deny is missing.
 - 2026-10-17 · CI scope · workflow has the 3-OS matrix only; the separate `coverage`, `perf` and `nightly` jobs from §13 are added with M11.2/M11.1/M10.3 respectively. UI tests need no `xvfb-run` on Linux (verified with `DISPLAY` unset).
+- 2026-10-17 · ids API · id newtypes have `new(i64)`/`get()` and `Display` but no `From<i64>`, so raw integers must be wrapped explicitly; `lb-catalog` converts with `.get()` because the orphan rule forbids it implementing rusqlite's `ToSql` for `lb-core` types.
+- 2026-10-17 · string enums · `SortOrder`, `GroupBy`, `MediaType`, `Format`, `PhotoStatus` share a `string_enum!` macro giving `as_str`, `Display`, `FromStr`, `ALL` and serde with the same lowercase snake_case strings (these are the database CHECK values). `Format` lists jpeg, png, gif, webp, tiff, bmp, heif, raw, mp4, mov, avi, mkv, webm; extension mapping is left to M2.
+- 2026-10-17 · chrono · workspace `chrono` uses `default-features = false` with `std, clock, serde` (no `wasmbind`/`oldtime`) · smaller tree; ISO-8601 serde for `NaiveDateTime`.
 - 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
 
 ## Blockers
