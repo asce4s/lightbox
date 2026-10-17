@@ -19,6 +19,11 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 lb-testkit = { path = "../lb-testkit" }
 tempfile = { workspace = true }
 image = { workspace = true, features = ["jpeg", "png"] }
+
+[[bench]]
+name = "thumbnail"
+harness = false

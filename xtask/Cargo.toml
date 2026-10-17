@@ -16,6 +16,7 @@ lb-testkit = { path = "../crates/lb-testkit" }
 lb-faces = { path = "../crates/lb-faces" }
 directories = { workspace = true }
 ureq = { workspace = true }
+image = { workspace = true, features = ["png"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

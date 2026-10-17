@@ -4,12 +4,27 @@
 use lb_app::{Lightbox, LightboxOptions};
 use lb_core::{Photo, PhotoId, RootMode};
 use lb_jobs::JobQueue;
-use lb_testkit::{FakeOpener, FakeTrash};
+use lb_testkit::{FakeOpener, FakeTrash, Invariants};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// The end-of-test checks of SPEC §12.6 for a library at `home` over the photo folders `roots`:
+/// no original changes content, the catalog is consistent, no temp file is left behind.
+pub fn invariants(home: &Path, roots: &[&Path]) -> Invariants {
+    let paths = lb_app::AppPaths::under(home);
+    let mut inv = Invariants::new()
+        .catalog(&paths.catalog())
+        .no_temp_files_in(&paths.cache);
+    for root in roots {
+        inv = inv.originals(root);
+    }
+    inv
+}
+
 /// An open library over a private directory of generated JPEGs.
 pub struct TestLib {
+    /// Checks the global invariants of SPEC §12.6 when the test ends; dropped first.
+    pub _invariants: Invariants,
     pub home: tempfile::TempDir,
     pub photos: tempfile::TempDir,
     pub lb: Lightbox,
@@ -81,6 +96,7 @@ pub fn build(spec: &[(&str, usize)], options: LightboxOptions) -> TestLib {
         .collect();
     rows.sort();
     TestLib {
+        _invariants: invariants(home.path(), &[photos.path()]),
         home,
         photos,
         lb,
@@ -112,6 +128,7 @@ pub fn named(names: &[&str]) -> TestLib {
         .map(|n| all.iter().find(|p| p.path.ends_with(n)).unwrap().id)
         .collect();
     TestLib {
+        _invariants: invariants(home.path(), &[photos.path()]),
         home,
         photos,
         lb,

@@ -7,3 +7,4 @@ mod photos;
 mod query;
 mod scan;
 mod tags;
+mod verify;

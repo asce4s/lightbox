@@ -16,6 +16,8 @@ use std::sync::Arc;
 
 /// An open library over generated JPEGs, driven by a fake clock.
 pub struct UiLib {
+    /// Checks the global invariants of SPEC §12.6 when the test ends; dropped first.
+    pub _invariants: lb_testkit::Invariants,
     pub home: tempfile::TempDir,
     pub photos: tempfile::TempDir,
     pub app: Lightbox,
@@ -74,7 +76,13 @@ pub fn ui_library(spec: &[(&str, &[&str])]) -> UiLib {
         .iter()
         .map(|f| all.iter().find(|p| &p.path == f).unwrap().id)
         .collect();
+    let paths = lb_app::AppPaths::under(home.path());
+    let invariants = lb_testkit::Invariants::new()
+        .originals(photos.path())
+        .catalog(&paths.catalog())
+        .no_temp_files_in(&paths.cache);
     UiLib {
+        _invariants: invariants,
         home,
         photos,
         app,

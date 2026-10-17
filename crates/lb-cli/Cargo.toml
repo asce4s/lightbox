@@ -16,6 +16,7 @@ image = { workspace = true, features = ["png"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
 assert_cmd = { workspace = true }
 predicates = { workspace = true }
 tempfile = { workspace = true }

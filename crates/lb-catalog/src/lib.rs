@@ -7,6 +7,7 @@ mod error;
 mod fts;
 mod repo;
 mod schema;
+mod verify;
 
 pub use backup::{
     BACKUPS_KEPT, BackupInfo, backup_file_name, check_file, list_backups, restore_from_backup,

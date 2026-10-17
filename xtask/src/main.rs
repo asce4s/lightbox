@@ -1,13 +1,16 @@
-//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|models>`.
+//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|coverage|package|models>`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod ci;
+mod coverage;
 mod deps;
+mod icon;
 mod models;
+mod package;
 
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|models>";
+const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|coverage|package|models>";
 
 /// Result of dispatching a subcommand.
 #[derive(Debug, PartialEq, Eq)]
@@ -16,7 +19,9 @@ enum Dispatch {
     Fixtures,
     Goldens { update: Option<String> },
     Models { dir: Option<String> },
-    Stub(&'static str, &'static str),
+    Perf { benches: bool },
+    Coverage { from_json: Option<String> },
+    Package,
     Usage(String),
 }
 
@@ -38,7 +43,26 @@ fn dispatch(args: &[String]) -> Dispatch {
                 Dispatch::Usage("usage: cargo xtask goldens [--update <suite|name|all>]".to_owned())
             }
         },
-        Some("perf") => Dispatch::Stub("perf", "M11.1"),
+        Some("perf") => match args.get(1).map(String::as_str) {
+            None => Dispatch::Perf { benches: false },
+            Some("--bench") => Dispatch::Perf { benches: true },
+            Some(_) => Dispatch::Usage("usage: cargo xtask perf [--bench]".to_owned()),
+        },
+        Some("coverage") => match args.get(1).map(String::as_str) {
+            None => Dispatch::Coverage { from_json: None },
+            Some("--from-json") => match args.get(2) {
+                Some(path) => Dispatch::Coverage {
+                    from_json: Some(path.clone()),
+                },
+                None => {
+                    Dispatch::Usage("usage: cargo xtask coverage [--from-json <path>]".to_owned())
+                }
+            },
+            Some(_) => {
+                Dispatch::Usage("usage: cargo xtask coverage [--from-json <path>]".to_owned())
+            }
+        },
+        Some("package") => Dispatch::Package,
         Some("models") => match args.get(1).map(String::as_str) {
             None => Dispatch::Models { dir: None },
             Some("--dir") => match args.get(2) {
@@ -82,13 +106,67 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        Dispatch::Stub(name, task) => {
-            println!("`xtask {name}` is not implemented yet (planned in {task})");
-            ExitCode::SUCCESS
-        }
+        Dispatch::Perf { benches } => perf(benches),
+        Dispatch::Package => match package::run() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("packaging failed: {e:#}");
+                ExitCode::FAILURE
+            }
+        },
+        Dispatch::Coverage { from_json } => match coverage::run(from_json.as_deref()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("{e:#}");
+                ExitCode::FAILURE
+            }
+        },
         Dispatch::Usage(msg) => {
             eprintln!("{msg}");
             ExitCode::from(2)
+        }
+    }
+}
+
+/// Packages that own a `tests/perf.rs` budget check (SPEC §11).
+const PERF_PACKAGES: [&str; 3] = ["lb-app", "lb-thumbs", "lb-imaging"];
+
+/// Packages with criterion benches.
+const BENCH_PACKAGES: [&str; 4] = ["lb-search", "lb-imaging", "lb-thumbs", "lb-catalog"];
+
+/// Runs the performance budget tests in release mode, enforcing SPEC §11 (budget + 50%), and
+/// optionally the criterion benches.
+fn perf(benches: bool) -> ExitCode {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let mut test = std::process::Command::new(&cargo);
+    test.args(["test", "--release", "--locked"]);
+    for package in PERF_PACKAGES {
+        test.args(["-p", package]);
+    }
+    test.args(["--test", "perf", "--", "--nocapture", "--test-threads=1"]);
+    test.env(lb_testkit::perf::PERF_ENV, "1");
+    let mut ok = run_status(&mut test);
+    if benches {
+        let mut bench = std::process::Command::new(&cargo);
+        bench.args(["bench", "--locked"]);
+        for package in BENCH_PACKAGES {
+            bench.args(["-p", package]);
+        }
+        ok &= run_status(&mut bench);
+    }
+    if ok {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+fn run_status(cmd: &mut std::process::Command) -> bool {
+    match cmd.status() {
+        Ok(status) => status.success(),
+        Err(e) => {
+            eprintln!("could not run cargo: {e}");
+            false
         }
     }
 }
@@ -128,7 +206,21 @@ mod tests {
     fn xtask_dispatches_all_subcommands() {
         assert_eq!(d(&["ci"]), Dispatch::Ci);
         assert_eq!(d(&["fixtures"]), Dispatch::Fixtures);
-        assert!(matches!(d(&["perf"]), Dispatch::Stub("perf", _)));
+        assert_eq!(d(&["perf"]), Dispatch::Perf { benches: false });
+        assert_eq!(d(&["perf", "--bench"]), Dispatch::Perf { benches: true });
+        assert!(matches!(d(&["perf", "x"]), Dispatch::Usage(_)));
+        assert_eq!(d(&["coverage"]), Dispatch::Coverage { from_json: None });
+        assert_eq!(
+            d(&["coverage", "--from-json", "c.json"]),
+            Dispatch::Coverage {
+                from_json: Some("c.json".into())
+            }
+        );
+        assert!(matches!(
+            d(&["coverage", "--from-json"]),
+            Dispatch::Usage(_)
+        ));
+        assert_eq!(d(&["package"]), Dispatch::Package);
         assert_eq!(d(&["models"]), Dispatch::Models { dir: None });
         assert_eq!(
             d(&["models", "--dir", "/m"]),

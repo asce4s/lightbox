@@ -8,6 +8,8 @@ pub mod fixtures;
 mod goldens;
 mod home;
 mod image_cmp;
+pub mod invariants;
+pub mod perf;
 mod wait;
 
 pub use clock::FakeClock;
@@ -17,4 +19,5 @@ pub use home::{LIGHTBOX_HOME_ENV, TestHome};
 pub use image_cmp::{
     ImageDiff, ImageMismatch, assert_images_close, check_images_close, compare_images,
 };
+pub use invariants::Invariants;
 pub use wait::wait_until;

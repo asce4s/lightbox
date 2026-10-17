@@ -1,6 +1,8 @@
 //! M10.4: legacy `.picasa.ini` import (SPEC §6.17).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod common;
+
 use lb_app::{Lightbox, LightboxOptions, PicasaOptions, ViewSource};
 use lb_core::{EditOp, PhotoId, RootMode};
 use lb_jobs::JobQueue;
@@ -8,6 +10,7 @@ use lb_testkit::fixtures;
 use std::path::{Path, PathBuf};
 
 struct Imported {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     dir: tempfile::TempDir,
     lb: Lightbox,
@@ -48,6 +51,7 @@ fn setup() -> Imported {
         .add_root(&dir.path().join("picasa"), RootMode::Watch)
         .unwrap();
     Imported {
+        _invariants: common::invariants(home.path(), &[&dir.path().join("picasa")]),
         _home: home,
         dir,
         lb,

@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 struct Rig {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     source: tempfile::TempDir,
     dest: tempfile::TempDir,
@@ -31,6 +32,7 @@ fn rig(files: &[(&str, u8)]) -> Rig {
     let lb =
         Lightbox::open_with(home.path(), JobQueue::inline(), LightboxOptions::default()).unwrap();
     Rig {
+        _invariants: common::invariants(home.path(), &[source.path(), dest.path()]),
         _home: home,
         source,
         dest,

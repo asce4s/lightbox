@@ -17,6 +17,17 @@ fn write_jpeg(path: &Path, seed: u8) {
     img.save(path).unwrap();
 }
 
+impl Drop for Env {
+    fn drop(&mut self) {
+        let catalog = self.home.path().join("data/catalog.sqlite3");
+        let cache = self.home.path().join("cache");
+        let _ = lb_testkit::Invariants::new()
+            .catalog(&catalog)
+            .no_temp_files_in(self.photos.path())
+            .no_temp_files_in(&cache);
+    }
+}
+
 impl Env {
     /// A library with three photos `IMG_2021061{1,2,3}_120000.jpg`, already added as a root.
     fn new() -> Self {
@@ -354,6 +365,12 @@ fn cli_doctor_e2e() {
     assert_eq!(r["integrity_problems"].as_array().unwrap().len(), 0);
     assert!(r["schema_version"].as_u64().unwrap() >= 2);
     assert!(
+        r["graphics"]["session"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty())
+    );
+    assert_eq!(r["face_models_ready"], false);
+    assert!(
         r["data_dir"]
             .as_str()
             .unwrap()
@@ -362,7 +379,8 @@ fn cli_doctor_e2e() {
     env.cmd(&["doctor"])
         .assert()
         .success()
-        .stdout(predicates::str::contains("integrity ok"));
+        .stdout(predicates::str::contains("integrity ok"))
+        .stdout(predicates::str::contains("graphics:"));
 }
 
 #[test]

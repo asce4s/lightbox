@@ -786,7 +786,7 @@ fn doctor(lb: &Lightbox) -> CliResult {
             .map_or_else(|| "not found".to_owned(), |p| p.display().to_string())
     };
     let text = format!(
-        "data:      {}\ncache:     {}\ncatalog:   schema {}, {} photos, {} roots, integrity {}\nffmpeg:    {}\nffprobe:   {}\nmodels:    {}\nfeatures:  {}",
+        "data:      {}\ncache:     {}\ncatalog:   schema {}, {} photos, {} roots, integrity {}\nffmpeg:    {}\nffprobe:   {}\nmodels:    {}\ngraphics:  {}{}\nfeatures:  {}",
         report.data_dir.display(),
         report.cache_dir.display(),
         report.schema_version,
@@ -802,11 +802,31 @@ fn doctor(lb: &Lightbox) -> CliResult {
         report.face_models.as_ref().map_or_else(
             || "LIGHTBOX_FACE_MODELS not set".to_owned(),
             |(p, ok)| format!(
-                "{} ({})",
+                "{} ({}, {})",
                 p.display(),
-                if *ok { "found" } else { "missing" }
+                if *ok { "found" } else { "missing" },
+                if report.face_models_ready {
+                    "verified"
+                } else {
+                    "not ready"
+                }
             )
         ),
+        report.graphics.session,
+        if report.graphics.render_nodes.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " ({})",
+                report
+                    .graphics
+                    .render_nodes
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        },
         report.features.join(", "),
     );
     let json = serde_json::to_value(&report).map_err(|e| CliError::Runtime(e.to_string()))?;

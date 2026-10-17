@@ -31,6 +31,7 @@ fn blocks(seed: u64, w: u32, h: u32) -> DynamicImage {
 }
 
 struct Lib {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     dir: tempfile::TempDir,
     lb: Lightbox,
@@ -56,6 +57,7 @@ fn lib(files: &[(&str, DynamicImage)], copies: &[(&str, &str)]) -> Lib {
     let lb = Lightbox::open_with(home.path(), JobQueue::inline(), options).unwrap();
     lb.library().add_root(dir.path(), RootMode::Watch).unwrap();
     Lib {
+        _invariants: common::invariants(home.path(), &[dir.path()]),
         _home: home,
         dir,
         lb,

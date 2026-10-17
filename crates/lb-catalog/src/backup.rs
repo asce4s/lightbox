@@ -60,8 +60,8 @@ pub fn list_backups(dir: &Path) -> Result<Vec<BackupInfo>> {
     Ok(found)
 }
 
-fn quick_check_conn(conn: &Connection) -> Result<Vec<String>> {
-    let mut stmt = conn.prepare("PRAGMA quick_check")?;
+fn check_conn(conn: &Connection, pragma: &str) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(pragma)?;
     let rows: Vec<String> = stmt
         .query_map([], |r| r.get(0))?
         .collect::<rusqlite::Result<_>>()?;
@@ -76,7 +76,7 @@ fn quick_check_conn(conn: &Connection) -> Result<Vec<String>> {
 /// reported problems (empty when healthy). Fails if the file is not a readable SQLite database.
 pub fn check_file(path: &Path) -> Result<Vec<String>> {
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-    quick_check_conn(&conn)
+    check_conn(&conn, "PRAGMA quick_check")
 }
 
 fn user_version(conn: &Connection) -> Result<u32> {
@@ -97,7 +97,7 @@ fn sync_file(path: &Path) -> Result<()> {
 /// Checks that `path` is a healthy catalog database no newer than this build understands.
 fn validate_backup(path: &Path) -> Result<()> {
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-    if let Some(problem) = quick_check_conn(&conn)?.into_iter().next() {
+    if let Some(problem) = check_conn(&conn, "PRAGMA quick_check")?.into_iter().next() {
         return Err(CatalogError::BackupInvalid(problem));
     }
     if user_version(&conn)? > LATEST_SCHEMA_VERSION {
@@ -109,7 +109,13 @@ fn validate_backup(path: &Path) -> Result<()> {
 impl Catalog {
     /// Runs `PRAGMA quick_check` and returns the reported problems; empty means healthy.
     pub fn quick_check(&self) -> Result<Vec<String>> {
-        self.read(quick_check_conn)
+        self.read(|c| check_conn(c, "PRAGMA quick_check"))
+    }
+
+    /// Runs the full `PRAGMA integrity_check` and returns the reported problems; empty means
+    /// healthy. Slower than [`Catalog::quick_check`] on large catalogs.
+    pub fn integrity_check(&self) -> Result<Vec<String>> {
+        self.read(|c| check_conn(c, "PRAGMA integrity_check"))
     }
 
     /// Writes a consistent snapshot of the catalog to `dest` using SQLite's online backup API.
@@ -132,7 +138,9 @@ impl Catalog {
                     )?;
                     let _mode: String =
                         dst.pragma_update_and_check(None, "journal_mode", "DELETE", |r| r.get(0))?;
-                    if let Some(problem) = quick_check_conn(&dst)?.into_iter().next() {
+                    if let Some(problem) =
+                        check_conn(&dst, "PRAGMA quick_check")?.into_iter().next()
+                    {
                         return Err(CatalogError::BackupInvalid(problem));
                     }
                     dst.close().map_err(|(_, e)| e)?;
