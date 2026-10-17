@@ -103,6 +103,7 @@ pub struct LightboxWindow {
     pub(crate) viewport: (f32, f32),
     pub(crate) theme: ThemeChoice,
     last_anchor_row: Option<usize>,
+    pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -171,6 +172,7 @@ impl LightboxWindow {
             viewport: TEST_WINDOW_SIZE,
             theme,
             last_anchor_row: None,
+            timeline_drag: None,
             _subscriptions: subscriptions,
         };
         if ticker {

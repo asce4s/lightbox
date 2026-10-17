@@ -144,6 +144,21 @@ pub struct PhotoQueryResult {
     pub groups: Vec<Group>,
     /// Number of photos across all groups.
     pub total: usize,
+    /// Calendar months of the result for the timeline scrubber (SPEC §9.3).
+    pub timeline: Vec<MonthBucket>,
+}
+
+/// One calendar month on the timeline scrubber.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MonthBucket {
+    /// Year.
+    pub year: i32,
+    /// Month, 1 to 12.
+    pub month: u32,
+    /// Photos taken in the month.
+    pub count: usize,
+    /// The month's photo that comes first in display order; dragging to the month scrolls here.
+    pub first: PhotoId,
 }
 
 impl PhotoQueryResult {
@@ -209,6 +224,10 @@ impl SearchService {
 
     fn group(&self, rows: Vec<QueryRow>, by: GroupBy) -> Result<PhotoQueryResult> {
         let total = rows.len();
+        let dates: HashMap<PhotoId, (i32, u32)> = rows
+            .iter()
+            .map(|r| (r.id, (r.date.year(), r.date.month())))
+            .collect();
         let mut groups: Vec<Group> = Vec::new();
         let mut index: HashMap<GroupKey, usize> = HashMap::new();
         for row in rows {
@@ -256,6 +275,35 @@ impl SearchService {
                 }
             }
         }
-        Ok(PhotoQueryResult { groups, total })
+        let timeline = timeline_of(&groups, &dates);
+        Ok(PhotoQueryResult {
+            groups,
+            total,
+            timeline,
+        })
     }
+}
+
+/// Months in the order their first photo appears in the grid.
+fn timeline_of(groups: &[Group], dates: &HashMap<PhotoId, (i32, u32)>) -> Vec<MonthBucket> {
+    let mut buckets: Vec<MonthBucket> = Vec::new();
+    let mut slot: HashMap<(i32, u32), usize> = HashMap::new();
+    for id in groups.iter().flat_map(|g| g.ids.iter()) {
+        let Some(&(year, month)) = dates.get(id) else {
+            continue;
+        };
+        match slot.get(&(year, month)) {
+            Some(&i) => buckets[i].count += 1,
+            None => {
+                slot.insert((year, month), buckets.len());
+                buckets.push(MonthBucket {
+                    year,
+                    month,
+                    count: 1,
+                    first: *id,
+                });
+            }
+        }
+    }
+    buckets
 }

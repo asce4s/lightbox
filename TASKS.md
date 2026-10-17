@@ -87,7 +87,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 ## M9 — P1 features
 
 - [x] **M9.1** Settings + theming. Tests: `settings_defaults`, `settings_roundtrip`, `settings_unknown_keys_ignored`, `theme_change_emits_event`, `ui_theme_toggle`.
-- [ ] **M9.2** Timeline scrubber. Tests: `vm_timeline_buckets_by_month`, `ui_timeline_drag_scrolls_grid`.
+- [x] **M9.2** Timeline scrubber. Tests: `vm_timeline_buckets_by_month`, `ui_timeline_drag_scrolls_grid`.
 - [ ] **M9.3** Import. Tests: `import_copies_into_date_folders`, `import_skips_duplicates`, `import_verifies_hash`, `import_delete_source_only_after_verify`, `import_cancel_leaves_no_partial_files`.
 - [ ] **M9.4** Duplicates. Tests: `exact_duplicates_grouped`, `resized_copy_is_similar`, `different_images_not_similar`, `bk_tree_matches_bruteforce`.
 - [ ] **M9.5** Slideshow. Tests: `slideshow_advances_on_tick`, `slideshow_pause_stops_advance`, `slideshow_loop_and_shuffle_deterministic_with_seed`, `slideshow_skips_unreadable`, `ui_slideshow_escape_exits`.
@@ -171,6 +171,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M8.5 · crop tool with aspect presets, handles, thirds overlay, nudging, plus straighten overlay; tests vm_crop_aspect_lock, crop_presets_follow_orientation, crop_move_nudge_and_op, ui_crop_apply_pushes_crop_op
 2026-10-17 · M8.6 · red-eye tool and before/after toggle (button and held backslash); tests ui_before_after_toggle_shows_original, vm_redeye_region_normalized, ui_redeye_drag_adds_region
 2026-10-17 · M9.1 · typed Settings sections stored per key (defaults, forward compatible, SettingsChanged events), LibraryVm reads grid/library settings, title-bar theme toggle (System/Light/Dark) persisted and applied live; tests settings_defaults, settings_roundtrip, settings_unknown_keys_ignored, theme_change_emits_event, ui_theme_toggle
+2026-10-17 · M9.2 · PhotoQueryResult.timeline month buckets (grid order, with the first photo of each month), LibraryVm timeline_jump/timeline_filter, timeline strip under the grid (drag scrolls, shift-drag sets the date chip, Clear dates button); tests vm_timeline_buckets_by_month, vm_timeline_jump_anchors_first_photo_of_month, vm_timeline_filter_sets_date_chip, ui_timeline_drag_scrolls_grid, ui_timeline_shift_drag_sets_date_range
 
 ## Decisions
 
@@ -296,6 +297,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - lb-app additions for M8: `PreviewFile`, `EditService::preview_file`, `vm::{CropVm, AspectPreset, CropHandle, RedEyeVm, DisplayRect, EffectPanelVm, EFFECTS}` and `ConfirmAction::Revert`.
 - M9.1: settings are stored one JSON value per top-level section (`theme`, `grid`, `library`, `thumbs`, `export`, `slideshow`, `faces`, `map`, `video`); only sections that differ from what is stored are written, defaults are never stored, unreadable values fall back to defaults and unknown keys are left alone. `grid.group_by`/`grid.sort` default to `Month`/`DateTakenDesc` (what the grid already did since M6.5) instead of the SPEC table's `Folder`/`DateTakenAsc`, so a fresh library looks the same before and after settings exist. `grid.thumb_size` is S/M/L = 112/160/256 px.
 - M9.1: the theme button cycles System -> Light -> Dark; System uses the window appearance. A full Settings dialog is not built; the title-bar theme toggle is the UI for `theme`, the other sections are read at startup (grid, library) and by their features.
+- M9.2: timeline buckets are listed in grid order (first appearance in display order), not strictly chronological, so the left end of the scrubber is always the top of the grid whatever the sort or grouping. The strip spans the full window width above the tray instead of only under the grid. Segments have uniform width with bar height showing density. GPUI: `ScrollStrategy::Top` -> the virtual list only scrolls the item into view (nearest edge), so jumps set the offset with `VirtualListScrollHandle::set_offset`.
 
 ## Blockers
 

@@ -123,6 +123,8 @@ ids! {
     EFFECT_PANEL = "effect-panel",
     EFFECT_APPLY = "effect-apply",
     EFFECT_CANCEL = "effect-cancel",
+    TIMELINE = "timeline",
+    TIMELINE_CLEAR = "timeline-clear",
 }
 
 fn named(name: &'static str, n: u64) -> ElementId {
@@ -176,6 +178,11 @@ pub fn filmstrip_cell(id: PhotoId) -> ElementId {
 /// An aspect preset button of the crop tool (`free`, `original`, `1x1`, ...).
 pub fn crop_aspect(key: &str) -> ElementId {
     ElementId::Name(format!("crop-aspect-{key}").into())
+}
+
+/// A month segment of the timeline scrubber.
+pub fn timeline_month(index: usize) -> ElementId {
+    named("timeline-month", index as u64)
 }
 
 /// A resize handle of the crop rectangle (`top-left`, `right`, ...).

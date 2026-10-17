@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
 use crate::query::ViewSource;
-use crate::search::{FilterChips, PhotoQueryResult, ViewQuery};
+use crate::search::{FilterChips, MonthBucket, PhotoQueryResult, ViewQuery};
 use indexmap::IndexSet;
 use lb_core::{EditOp, GroupBy, Photo, PhotoId, Selection, SortOrder};
 use std::collections::HashMap;
@@ -339,6 +339,49 @@ impl LibraryVm {
             }
             super::grid::GridRow::Header { .. } => None,
         })
+    }
+
+    // ---- timeline ----
+
+    /// Months of the current result in grid order, for the timeline scrubber.
+    pub fn timeline(&self) -> &[MonthBucket] {
+        &self.result.timeline
+    }
+
+    /// Anchors the grid to the first photo of month bucket `index` and returns its row, which the
+    /// view scrolls to the top.
+    pub fn timeline_jump(&mut self, index: usize) -> Option<usize> {
+        let first = self.result.timeline.get(index)?.first;
+        self.scroll_anchor = Some(first);
+        let (g, i) = *self.pos.get(&first)?;
+        self.layout.row_of(g, i)
+    }
+
+    /// Filters the grid to the months of buckets `a` to `b` (either order), as the date chip.
+    pub fn timeline_filter(&mut self, a: usize, b: usize) {
+        let (lo, hi) = (a.min(b), a.max(b));
+        let (Some(first), Some(last)) =
+            (self.result.timeline.get(lo), self.result.timeline.get(hi))
+        else {
+            return;
+        };
+        let mut months: Vec<(i32, u32)> = self.result.timeline[lo..=hi]
+            .iter()
+            .map(|m| (m.year, m.month))
+            .collect();
+        months.sort_unstable();
+        let (from_y, from_m) = months.first().copied().unwrap_or((first.year, first.month));
+        let (to_y, to_m) = months.last().copied().unwrap_or((last.year, last.month));
+        let from = chrono::NaiveDate::from_ymd_opt(from_y, from_m, 1);
+        let next = if to_m == 12 {
+            chrono::NaiveDate::from_ymd_opt(to_y + 1, 1, 1)
+        } else {
+            chrono::NaiveDate::from_ymd_opt(to_y, to_m + 1, 1)
+        };
+        let to = next.and_then(|d| d.pred_opt());
+        let mut chips = self.view.chips.clone();
+        chips.date = Some((from, to));
+        self.set_chips(chips);
     }
 
     // ---- selection ----

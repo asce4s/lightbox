@@ -4249,6 +4249,7 @@ dependencies = [
 name = "lb-ui"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "gpui-kit",
  "image",
  "lb-app",

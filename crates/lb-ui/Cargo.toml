@@ -19,3 +19,4 @@ gpui-kit = { workspace = true, features = ["test-support"] }
 lb-testkit = { path = "../lb-testkit" }
 image = { workspace = true, features = ["jpeg", "png"] }
 tempfile = { workspace = true }
+chrono = { workspace = true }

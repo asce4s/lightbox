@@ -63,6 +63,7 @@ impl Render for LightboxWindow {
                 root.child(self.render_title_bar(cx))
                     .child(self.render_chips(cx))
                     .child(div().flex_1().min_h_0().child(main))
+                    .child(self.render_timeline(cx))
                     .child(self.render_tray(cx))
                     .child(self.render_status_bar(window, cx))
             }

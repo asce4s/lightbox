@@ -46,7 +46,9 @@ pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};
 pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};
 pub use query::ViewSource;
-pub use search::{FilterChips, Group, GroupKey, PhotoQueryResult, SearchService, ViewQuery};
+pub use search::{
+    FilterChips, Group, GroupKey, MonthBucket, PhotoQueryResult, SearchService, ViewQuery,
+};
 pub use settings::{
     ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings, SETTINGS_KEYS,
     Settings, SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings,
