@@ -65,6 +65,18 @@ pub fn format_for_extension(ext: &str, caps: Capabilities) -> Option<Format> {
     groups(caps).find(|(e, _)| *e == ext).map(|(_, f)| *f)
 }
 
+/// Whether `ext` (no dot, any case) is a camera RAW extension.
+pub fn is_raw_extension(ext: &str) -> bool {
+    let ext = ext.to_ascii_lowercase();
+    RAW_EXTS.iter().any(|(e, _)| *e == ext)
+}
+
+/// Whether `ext` (no dot, any case) is a HEIF/HEIC/AVIF extension.
+pub fn is_heif_extension(ext: &str) -> bool {
+    let ext = ext.to_ascii_lowercase();
+    HEIF_EXTS.iter().any(|(e, _)| *e == ext)
+}
+
 /// Whether `ext` is an indexed extension under `caps`.
 pub fn is_supported_extension(ext: &str, caps: Capabilities) -> bool {
     format_for_extension(ext, caps).is_some()

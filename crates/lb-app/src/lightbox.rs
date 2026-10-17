@@ -127,6 +127,8 @@ impl Lightbox {
         let thumbs = ThumbCache::open(&paths.cache)?;
         #[allow(unused_mut)]
         let mut scan_options = ScanOptions::default();
+        scan_options.caps.heif = lb_media::heif_decoder_available();
+        scan_options.caps.raw = lb_media::raw_decoder_available();
         #[cfg(feature = "video")]
         {
             scan_options.caps.video = true;

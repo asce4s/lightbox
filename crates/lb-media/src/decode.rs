@@ -32,7 +32,14 @@ fn corrupt(e: impl std::fmt::Display) -> MediaError {
 }
 
 fn decode_jpeg(path: &Path, max_long_edge: Option<u32>) -> Result<DynamicImage> {
-    let mut dec = jpeg_decoder::Decoder::new(BufReader::new(File::open(path)?));
+    decode_jpeg_reader(BufReader::new(File::open(path)?), max_long_edge)
+}
+
+pub(crate) fn decode_jpeg_reader(
+    reader: impl Read,
+    max_long_edge: Option<u32>,
+) -> Result<DynamicImage> {
+    let mut dec = jpeg_decoder::Decoder::new(reader);
     dec.read_info().map_err(corrupt)?;
     let info = dec
         .info()
@@ -79,6 +86,10 @@ fn decode_jpeg(path: &Path, max_long_edge: Option<u32>) -> Result<DynamicImage> 
                 .ok_or_else(bad)
         }
     }
+    .map(|img| match dec.icc_profile() {
+        Some(profile) if !profile.is_empty() => crate::icc::to_srgb(img, &profile),
+        _ => img,
+    })
 }
 
 fn image_format(format: Format) -> Result<ImageFormat> {
@@ -161,6 +172,15 @@ pub fn decode_with(
 ) -> Result<DynamicImage> {
     let format = sniff_file(path)?;
     let raw = guard(|| decoder.decode_raw(path, format, max_long_edge))?;
+    present(path, raw, max_long_edge)
+}
+
+/// Shrinks to `max_long_edge` when given and applies the file's EXIF orientation.
+pub(crate) fn present(
+    path: &Path,
+    raw: DynamicImage,
+    max_long_edge: Option<u32>,
+) -> Result<DynamicImage> {
     let img = match max_long_edge {
         Some(max) => {
             let (w, h) = fit_within(raw.width(), raw.height(), max);
@@ -176,7 +196,42 @@ pub fn decode_with(
     Ok(apply_orientation(img, orientation))
 }
 
+fn extension(path: &Path) -> Option<String> {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+}
+
 /// Decodes `path` upright with the built-in decoder (SPEC §6.2.3).
+///
+/// `.heic`/`.heif`/`.avif` and camera RAW extensions are not sniffed as their container (a RAW
+/// file is a TIFF), so they are dispatched here before content sniffing.
 pub fn decode(path: &Path, max_long_edge: Option<u32>) -> Result<DynamicImage> {
+    if let Some(ext) = extension(path) {
+        if crate::is_heif_extension(&ext) {
+            #[cfg(feature = "heif")]
+            {
+                return crate::heif::decode_heif(path, max_long_edge);
+            }
+            #[cfg(not(feature = "heif"))]
+            {
+                return Err(MediaError::Unsupported(
+                    "HEIC/HEIF/AVIF need the heif feature".into(),
+                ));
+            }
+        }
+        if crate::is_raw_extension(&ext) {
+            #[cfg(feature = "raw")]
+            {
+                return crate::preview::decode_raw_preview(path, max_long_edge);
+            }
+            #[cfg(not(feature = "raw"))]
+            {
+                return Err(MediaError::Unsupported(
+                    "camera RAW needs the raw feature".into(),
+                ));
+            }
+        }
+    }
     decode_with(&DefaultDecoder, path, max_long_edge)
 }

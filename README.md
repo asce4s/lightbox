@@ -58,7 +58,7 @@ Rust 1.99 (pinned by `rust-toolchain.toml`; `rustup` installs it on first use).
 
 | System | Install |
 |---|---|
-| Debian / Ubuntu | `sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (add `ffmpeg` for video) |
+| Debian / Ubuntu | `sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (add `ffmpeg` for video, `libheif-dev` and `libheif-plugin-libde265` for the `heif` feature) |
 | Fedora | `sudo dnf install libxkbcommon-devel libxkbcommon-x11-devel wayland-devel vulkan-loader-devel libxcb-devel fontconfig-devel freetype-devel openssl-devel pkgconf clang` |
 | macOS | Xcode command line tools (`xcode-select --install`); `brew install ffmpeg` for video |
 | Windows | Visual Studio Build Tools (MSVC, Windows SDK); `winget install ffmpeg` for video |
