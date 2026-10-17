@@ -1,0 +1,13 @@
+[package]
+name = "lb-video"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+lb-core = { path = "../lb-core" }
+lb-media = { path = "../lb-media" }

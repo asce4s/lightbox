@@ -8,13 +8,13 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M0 — Scaffold (P0)
 
-- [ ] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
-- [ ] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
-- [ ] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
-- [ ] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
-- [ ] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
-- [ ] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
-- [ ] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
+- [x] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
+- [x] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
+- [x] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
+- [x] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
+- [x] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
+- [x] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
+- [x] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
 
 ## M1 — Catalog (P0)
 
@@ -123,10 +123,36 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 <!-- YYYY-MM-DD · task id · summary · tests added/changed -->
 
+2026-10-17 · M0.1 · Workspace with 16 crates + apps/lightbox + xtask stub, toolchain 1.99.1, workspace deps pinned exact, lints (unwrap/expect denied), `.cargo` xtask alias, Cargo.lock committed · no tests (scaffold); verified fmt, clippy -D warnings, test, doc, lb-app --no-default-features, and that `unwrap` in a lib is rejected by clippy
+2026-10-17 · M0.2 · `xtask` with `ci` (SPEC §13 steps 1–9, fail-fast, loud SKIPPED summary), stubs for fixtures/goldens/perf/models · tests `ci_plan_lists_spec_steps_in_order`, `ci_stops_at_first_failure`, `ci_reports_skipped_steps_loudly_but_stays_green`, `xtask_dispatches_all_subcommands`. Skipped for now: fixtures (until M0.5), cargo deny (until M0.7; fails instead of skipping when `CI` env is set)
+2026-10-17 · M0.3 · dependency-rule checker in `xtask/src/deps.rs` over `cargo metadata --no-deps`; also enforces rusqlite only in lb-catalog, gpui-kit only in lb-ui, no direct gpui/gpui-component, lb-testkit dev-only · tests `xtask_dependency_rules_detect_violation`, `_accept_valid_graph`, `_reject_unknown_workspace_crate`, `_reject_malformed_json`
+
 ## Decisions
 
 <!-- YYYY-MM-DD · topic · decision · reason. Include every GPUI API adaptation and every golden update. -->
 
+- 2026-10-17 · toolchain · `rust-toolchain.toml` pins 1.99.1 (current stable) · edition 2024 needs >=1.85; sandbox shipped 1.83 so stable was installed via rustup.
+- 2026-10-17 · lb-app features · `default = [faces, video, map]`; P2 crates are optional deps forwarded by features; heavy impls (ONNX, ffmpeg) live behind further features inside those crates · SPEC §2 says P2 default-on but core tests pass with them off.
+- 2026-10-17 · lints · workspace `unwrap_used`/`expect_used` = deny, `clippy.toml` allows them in tests; `xtask` and `lb-testkit` opt out with a crate-level `allow` since they are tooling · SPEC says denied in library code only.
+- 2026-10-17 · gpui-kit scope · dependency checker allows `gpui-kit` only in `lb-ui`; `apps/lightbox` must reach GPUI through an `lb_ui` entry point (SPEC §4.2 lists lightbox → lb-app, lb-ui only) · keep §4.2 and §3.2 consistent.
+- 2026-10-17 · unsafe · workspace `unsafe_code` lowered from `forbid` to `deny`; only `lb-testkit/src/home.rs` allows it for `std::env::set_var` (unsafe in edition 2024), guarded by a process-wide lock · `TestHome` must set `LIGHTBOX_HOME` per SPEC §4.4/§12.2. Consequence: tests using `TestHome` serialize within one test binary.
+- 2026-10-17 · image diff semantics · `assert_images_close(actual, expected, max_diff, min_psnr)`: `max_diff` = largest allowed per-channel abs diff (u8, RGBA), PSNR over all RGBA channels, identical = infinity; diff.png amplifies |a-b| x8 on RGB, magenta where sizes differ.
+- 2026-10-17 · fixture generator location · generator, manifest model and EXIF writer live in `lb-testkit::fixtures` (not `xtask/src/exif_writer.rs`); `xtask fixtures` is a thin caller (xtask depends on lb-testkit, which the checker allows since xtask is exempt) · lets tests/fixture_library reuse the manifest and regenerate without shelling out.
+- 2026-10-17 · EXIF writing · hand-built APP1/TIFF writer (IFD0 + ExifIFD + GPS IFD) instead of `little_exif` · SPEC §12.3 fallback; fully deterministic and no extra dependency. Readback in tests uses `kamadak-exif` (dev-dependency) as an independent reader; the production reader choice (nom-exif vs kamadak-exif) is still open for M2.2.
+- 2026-10-17 · fixture content · no rendered text in generated images (avoids bundling a font before M6.6); patterns are resolution independent so the half-size and q60 dupes resemble their source; `video/` fixture is deferred to M10.2 (needs ffmpeg/ffprobe JSON); `.picasa.ini` is generated now with every §6.17 mapping.
+- 2026-10-17 · truncated JPEG · the `image` crate's JPEG decoder (zune-jpeg) returns a partial image for the truncated fixture instead of an error · M2.1/M2.4 must detect truncation themselves (e.g. strict decode or missing EOI marker) to satisfy `corrupt_files_marked_unreadable_without_panic`; the fixture test checks truncation structurally (no EOI).
+- 2026-10-17 · fixture mtime · all generated files get `mtime_unix = 1577836800`; manifest uses `taken_at_src = "mtime"` without `taken_at` because the naive-local conversion is timezone dependent.
+- 2026-10-17 · GPUI: spec said `gpui_kit::application().run(|cx| { ...; cx.open_window(..., Root::new(view)) })` with `gpui_kit::component::Root` → actual `gpui_kit::open_window(WindowOptions, cx, |window, cx| cx.new(view))`, which wraps the view in `gpui_kit::base::Root` itself and returns `(AnyWindowHandle, Entity<V>)`; call `gpui_kit::init` first. No `.expect` (denied): errors are logged and the app quits.
+- 2026-10-17 · GPUI: spec said `use gpui_kit::{TestAppContext, VisualTestContext}` / `cx.update_window(window.into(), ...)` → `cx.update_window(handle, |_, window, cx| ...)` needs `gpui_kit::AppContext` in scope (`use gpui_kit::AppContext as _`); `render_frame`, `find`, `.label()` come from `gpui_kit::test::TestWindowExt`; labels are set with `.aria_label(..)` after `.test_support()`.
+- 2026-10-17 · gpui-kit pin · `gpui-kit = "=0.7.3"` (resolves gpui-pre 0.3.9, gpui-component 0.7.3). Linux packages installed on Ubuntu 24.04: `libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (+ `xvfb`, not required by the headless harness). The §3.2 list was sufficient.
+- 2026-10-17 · lint · `missing_docs` moved from `[workspace.lints.rust]` to `#![warn(missing_docs)]` in every library crate · workspace-wide it also fired on integration-test crates (`tests/*.rs`) under `-D warnings`; SPEC §15 only requires docs on public library items.
+- 2026-10-17 · lb-ui entry point · `lb_ui::run()` owns the GPUI bootstrap so `apps/lightbox` depends only on lb-app + lb-ui (SPEC §4.2); `ids` currently holds only `HELLO_LABEL` and grows with each UI task.
+- 2026-10-17 · deny.toml · extra licenses allowed beyond the §13 list: `0BSD` (enum-iterator) and `CC0-1.0` (notify, hexf-parse, tiny-keccak) · both are permissive public-domain-style licenses required by the GPUI/notify trees; GPL/AGPL stay denied by the allow-list. `[advisories] unmaintained = "workspace"` because RUSTSEC unmaintained notices for `instant`, `paste`, `rustybuzz`, `ttf-parser` come only transitively through gpui-kit and cannot be fixed here; vulnerability/yanked checks still cover the whole tree. On `CI` env, xtask fails (not skips) if cargo-deny is missing.
+- 2026-10-17 · CI scope · workflow has the 3-OS matrix only; the separate `coverage`, `perf` and `nightly` jobs from §13 are added with M11.2/M11.1/M10.3 respectively. UI tests need no `xvfb-run` on Linux (verified with `DISPLAY` unset).
+- 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
+
 ## Blockers
 
 <!-- YYYY-MM-DD · task id · exact error · what was tried · tasks affected -->
+
+- (resolved) 2026-10-17 · M0.7 · macOS/Windows legs unverified locally → first pushed run (GitHub Actions run 39010488330) was green on ubuntu, macos and windows.

@@ -1,0 +1,29 @@
+[package]
+name = "lb-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = ["faces", "video", "map"]
+faces = ["dep:lb-faces"]
+video = ["dep:lb-video"]
+map = ["dep:lb-geo"]
+
+[dependencies]
+lb-core = { path = "../lb-core" }
+lb-catalog = { path = "../lb-catalog" }
+lb-media = { path = "../lb-media" }
+lb-imaging = { path = "../lb-imaging" }
+lb-thumbs = { path = "../lb-thumbs" }
+lb-scan = { path = "../lb-scan" }
+lb-search = { path = "../lb-search" }
+lb-jobs = { path = "../lb-jobs" }
+lb-faces = { path = "../lb-faces", optional = true }
+lb-video = { path = "../lb-video", optional = true }
+lb-geo = { path = "../lb-geo", optional = true }
+lb-picasa = { path = "../lb-picasa" }
