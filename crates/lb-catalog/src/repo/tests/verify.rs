@@ -44,3 +44,12 @@ fn verify_flags_dangling_foreign_keys() {
         "{problems:?}"
     );
 }
+
+#[test]
+fn integrity_check_is_empty_for_a_healthy_catalog() {
+    let (_d, c) = open();
+    let (_r, folder) = root_and_folder(&c);
+    insert_photos(&c, &folder, 3);
+    assert_eq!(c.integrity_check().unwrap(), Vec::<String>::new());
+    assert_eq!(c.quick_check().unwrap(), Vec::<String>::new());
+}

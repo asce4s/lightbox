@@ -1,14 +1,16 @@
-//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|coverage|models>`.
+//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|coverage|package|models>`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod ci;
 mod coverage;
 mod deps;
+mod icon;
 mod models;
+mod package;
 
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|coverage|models>";
+const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|coverage|package|models>";
 
 /// Result of dispatching a subcommand.
 #[derive(Debug, PartialEq, Eq)]
@@ -19,6 +21,7 @@ enum Dispatch {
     Models { dir: Option<String> },
     Perf { benches: bool },
     Coverage { from_json: Option<String> },
+    Package,
     Usage(String),
 }
 
@@ -59,6 +62,7 @@ fn dispatch(args: &[String]) -> Dispatch {
                 Dispatch::Usage("usage: cargo xtask coverage [--from-json <path>]".to_owned())
             }
         },
+        Some("package") => Dispatch::Package,
         Some("models") => match args.get(1).map(String::as_str) {
             None => Dispatch::Models { dir: None },
             Some("--dir") => match args.get(2) {
@@ -103,6 +107,13 @@ fn main() -> ExitCode {
             }
         },
         Dispatch::Perf { benches } => perf(benches),
+        Dispatch::Package => match package::run() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("packaging failed: {e:#}");
+                ExitCode::FAILURE
+            }
+        },
         Dispatch::Coverage { from_json } => match coverage::run(from_json.as_deref()) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
@@ -209,6 +220,7 @@ mod tests {
             d(&["coverage", "--from-json"]),
             Dispatch::Usage(_)
         ));
+        assert_eq!(d(&["package"]), Dispatch::Package);
         assert_eq!(d(&["models"]), Dispatch::Models { dir: None });
         assert_eq!(
             d(&["models", "--dir", "/m"]),

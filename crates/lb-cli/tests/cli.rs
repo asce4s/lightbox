@@ -365,6 +365,12 @@ fn cli_doctor_e2e() {
     assert_eq!(r["integrity_problems"].as_array().unwrap().len(), 0);
     assert!(r["schema_version"].as_u64().unwrap() >= 2);
     assert!(
+        r["graphics"]["session"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty())
+    );
+    assert_eq!(r["face_models_ready"], false);
+    assert!(
         r["data_dir"]
             .as_str()
             .unwrap()
@@ -373,7 +379,8 @@ fn cli_doctor_e2e() {
     env.cmd(&["doctor"])
         .assert()
         .success()
-        .stdout(predicates::str::contains("integrity ok"));
+        .stdout(predicates::str::contains("integrity ok"))
+        .stdout(predicates::str::contains("graphics:"));
 }
 
 #[test]

@@ -17,7 +17,7 @@ pub struct DoctorReport {
     pub cache_dir: PathBuf,
     /// Schema version of the catalog.
     pub schema_version: u32,
-    /// Problems reported by `PRAGMA quick_check`; empty when healthy.
+    /// Problems reported by `PRAGMA integrity_check`; empty when healthy.
     pub integrity_problems: Vec<String>,
     /// Number of indexed photos and videos.
     pub photos: usize,
@@ -29,8 +29,63 @@ pub struct DoctorReport {
     pub ffprobe: Option<PathBuf>,
     /// Face model directory from the environment and whether it exists.
     pub face_models: Option<(PathBuf, bool)>,
+    /// Whether the face-detection models are in place and match their checksums.
+    pub face_models_ready: bool,
+    /// Display server and GPU hints for this machine.
+    pub graphics: GraphicsReport,
     /// Features compiled into this build.
     pub features: Vec<&'static str>,
+}
+
+/// What can be told about the display and GPU without opening a window.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GraphicsReport {
+    /// Windowing/graphics system the app will use, e.g. `x11`, `wayland`, `metal`.
+    pub session: String,
+    /// GPU render nodes found (`/dev/dri/renderD*` on Linux).
+    pub render_nodes: Vec<PathBuf>,
+}
+
+impl GraphicsReport {
+    /// Inspects the environment.
+    pub fn detect() -> Self {
+        if cfg!(target_os = "macos") {
+            return Self {
+                session: "metal".into(),
+                render_nodes: Vec::new(),
+            };
+        }
+        if cfg!(windows) {
+            return Self {
+                session: "direct3d".into(),
+                render_nodes: Vec::new(),
+            };
+        }
+        let set = |name: &str| std::env::var_os(name).is_some_and(|v| !v.is_empty());
+        let session = if set("WAYLAND_DISPLAY") {
+            "wayland"
+        } else if set("DISPLAY") {
+            "x11"
+        } else {
+            "none (no WAYLAND_DISPLAY or DISPLAY)"
+        };
+        let mut render_nodes: Vec<PathBuf> = std::fs::read_dir("/dev/dri")
+            .map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| {
+                        p.file_name()
+                            .is_some_and(|n| n.to_string_lossy().starts_with("renderD"))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        render_nodes.sort();
+        Self {
+            session: session.into(),
+            render_nodes,
+        }
+    }
 }
 
 impl DoctorReport {
@@ -52,6 +107,19 @@ fn find_on_path(name: &str) -> Option<PathBuf> {
 }
 
 impl Lightbox {
+    #[cfg(feature = "faces")]
+    fn face_models_ready(&self) -> bool {
+        let dir = std::env::var_os(FACE_MODELS_ENV)
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.paths().models());
+        lb_faces::models_present(&dir)
+    }
+
+    #[cfg(not(feature = "faces"))]
+    fn face_models_ready(&self) -> bool {
+        false
+    }
+
     /// Checks the catalog and the optional tools Lightbox can use.
     pub fn doctor(&self) -> Result<DoctorReport> {
         let mut features = Vec::new();
@@ -68,7 +136,7 @@ impl Lightbox {
             data_dir: self.paths().data.clone(),
             cache_dir: self.paths().cache.clone(),
             schema_version: lb_catalog::LATEST_SCHEMA_VERSION,
-            integrity_problems: self.catalog().quick_check()?,
+            integrity_problems: self.catalog().integrity_check()?,
             photos: self.catalog().all_photo_ids()?.len(),
             roots: self.library().roots()?.len(),
             ffmpeg: find_on_path("ffmpeg"),
@@ -78,6 +146,8 @@ impl Lightbox {
                 let exists = p.is_dir();
                 (p, exists)
             }),
+            face_models_ready: self.face_models_ready(),
+            graphics: GraphicsReport::detect(),
             features,
         })
     }

@@ -9501,6 +9501,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "directories",
+ "image",
  "lb-faces",
  "lb-testkit",
  "serde",
