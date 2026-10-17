@@ -37,6 +37,7 @@ criterion = "=0.8.2"
 crossbeam-channel = "=0.5.17"
 directories = "=6.0.0"
 fast_image_resize = "=6.1.0"
+gpui-kit = "=0.7.3"
 image = { version = "=0.25.10", default-features = false }
 insta = "=1.49.0"
 kamadak-exif = "=0.6.1"
@@ -59,7 +60,6 @@ winnow = "=1.0.4"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
-missing_docs = "warn"
 
 [workspace.lints.clippy]
 unwrap_used = "deny"

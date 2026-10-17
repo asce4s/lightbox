@@ -1,3 +1,5 @@
 //! Lightbox GUI binary: wires `lb-app` and `lb-ui`.
 
-fn main() {}
+fn main() {
+    lb_ui::run();
+}

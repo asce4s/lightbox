@@ -1,4 +1,5 @@
 //! Test support: fixtures, fakes, invariants and image comparison. Dev-dependency only.
+#![warn(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 pub mod fixtures;

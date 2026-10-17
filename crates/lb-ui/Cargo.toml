@@ -11,3 +11,8 @@ workspace = true
 [dependencies]
 lb-app = { path = "../lb-app" }
 lb-core = { path = "../lb-core" }
+gpui-kit = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
