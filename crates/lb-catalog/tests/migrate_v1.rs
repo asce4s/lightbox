@@ -42,6 +42,36 @@ fn migrate_from_v1_fixture() {
     assert_eq!((photos, edits, items, tags), (2, 1, 2, 1));
     assert_eq!(caption, "At the beach", "user data survives migration");
 
+    let fts = |q: &'static str| -> Vec<i64> {
+        catalog
+            .read(|c| {
+                let mut stmt = c.prepare(
+                    "SELECT rowid FROM photos_fts WHERE photos_fts MATCH ?1 ORDER BY rowid",
+                )?;
+                Ok(stmt
+                    .query_map([q], |r| r.get(0))?
+                    .collect::<rusqlite::Result<_>>()?)
+            })
+            .unwrap()
+    };
+    assert_eq!(
+        fts("beach"),
+        [1, 2],
+        "file names, caption and tags of V1 rows are searchable after V2"
+    );
+    assert_eq!(fts("tags:beach"), [1]);
+    assert_eq!(fts("caption:beach"), [1]);
+    assert_eq!(fts("album_names:summer"), [1, 2]);
+    assert_eq!(fts("folder_path:2021"), [1, 2]);
+    catalog
+        .set_caption(&[lb_core::PhotoId::new(2)], Some("sunset".into()))
+        .unwrap();
+    assert_eq!(
+        fts("sunset"),
+        [2],
+        "incremental maintenance works on a migrated database"
+    );
+
     let integrity: String = catalog
         .read(|c| Ok(c.query_row("PRAGMA integrity_check", [], |r| r.get(0))?))
         .unwrap();

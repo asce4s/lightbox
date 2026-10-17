@@ -264,7 +264,26 @@ impl Catalog {
                 )?;
                 out.push(UpsertOutcome { id: PhotoId::new(id), inserted });
             }
+            let ids: Vec<PhotoId> = out.iter().map(|o| o.id).collect();
+            crate::fts::refresh_photos(tx, &ids)?;
             Ok(out)
+        })
+    }
+
+    /// Sets (or clears with `None`) the caption of every photo in `ids` in one transaction and
+    /// updates the search index. Returns the number of photos changed. The caption is stored
+    /// verbatim; length and whitespace rules belong to the caller (SPEC §6.7.1).
+    pub fn set_caption(&self, ids: &[PhotoId], caption: Option<String>) -> Result<usize> {
+        let ids = ids.to_vec();
+        self.write_tx(move |tx| {
+            let mut changed = 0;
+            let mut update = tx.prepare_cached("UPDATE photos SET caption = ?1 WHERE id = ?2")?;
+            for id in &ids {
+                changed += update.execute((&caption, id.get()))?;
+            }
+            drop(update);
+            crate::fts::refresh_photos(tx, &ids)?;
+            Ok(changed)
         })
     }
 

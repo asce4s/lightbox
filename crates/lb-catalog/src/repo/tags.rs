@@ -84,6 +84,10 @@ impl Catalog {
                     added += link.execute((photo.get(), tag.id.get()))?;
                 }
             }
+            drop(link);
+            if added > 0 {
+                crate::fts::refresh_photos(tx, &photos)?;
+            }
             Ok(added)
         })
     }
@@ -106,6 +110,10 @@ impl Catalog {
                 for tag in &ids {
                     removed += unlink.execute((photo.get(), tag.get()))?;
                 }
+            }
+            drop(unlink);
+            if removed > 0 {
+                crate::fts::refresh_photos(tx, &photos)?;
             }
             Ok(removed)
         })
@@ -163,12 +171,14 @@ impl Catalog {
             }
             match find_tag(tx, &new_name)? {
                 Some(target) if target.id != id => {
+                    let affected = crate::fts::photos_with_tag(tx, id)?;
                     tx.execute(
                         "INSERT OR IGNORE INTO photo_tags (photo_id, tag_id)
                          SELECT photo_id, ?1 FROM photo_tags WHERE tag_id = ?2",
                         (target.id.get(), id.get()),
                     )?;
                     tx.execute("DELETE FROM tags WHERE id = ?1", [id.get()])?;
+                    crate::fts::refresh_photos(tx, &affected)?;
                     Ok(target)
                 }
                 _ => {
@@ -176,6 +186,7 @@ impl Catalog {
                         "UPDATE tags SET name = ?1 WHERE id = ?2",
                         (&new_name, id.get()),
                     )?;
+                    crate::fts::refresh_photos(tx, &crate::fts::photos_with_tag(tx, id)?)?;
                     Ok(Tag { id, name: new_name })
                 }
             }
@@ -184,6 +195,11 @@ impl Catalog {
 
     /// Deletes a tag and its links; returns whether it existed.
     pub fn delete_tag(&self, id: TagId) -> Result<bool> {
-        self.write_tx(move |tx| Ok(tx.execute("DELETE FROM tags WHERE id = ?1", [id.get()])? > 0))
+        self.write_tx(move |tx| {
+            let affected = crate::fts::photos_with_tag(tx, id)?;
+            let existed = tx.execute("DELETE FROM tags WHERE id = ?1", [id.get()])? > 0;
+            crate::fts::refresh_photos(tx, &affected)?;
+            Ok(existed)
+        })
     }
 }

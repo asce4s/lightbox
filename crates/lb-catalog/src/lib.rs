@@ -3,6 +3,7 @@
 
 mod db;
 mod error;
+mod fts;
 mod repo;
 mod schema;
 

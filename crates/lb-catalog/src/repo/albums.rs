@@ -105,16 +105,23 @@ impl Catalog {
     pub fn rename_album(&self, id: AlbumId, name: &str) -> Result<bool> {
         let name = name.to_owned();
         self.write_tx(move |tx| {
-            Ok(tx.execute(
+            let changed = tx.execute(
                 "UPDATE albums SET name = ?1 WHERE id = ?2",
                 (name, id.get()),
-            )? > 0)
+            )? > 0;
+            crate::fts::refresh_photos(tx, &crate::fts::photos_in_album(tx, id)?)?;
+            Ok(changed)
         })
     }
 
     /// Deletes an album and its membership rows; the photos themselves are untouched.
     pub fn delete_album(&self, id: AlbumId) -> Result<bool> {
-        self.write_tx(move |tx| Ok(tx.execute("DELETE FROM albums WHERE id = ?1", [id.get()])? > 0))
+        self.write_tx(move |tx| {
+            let members = crate::fts::photos_in_album(tx, id)?;
+            let existed = tx.execute("DELETE FROM albums WHERE id = ?1", [id.get()])? > 0;
+            crate::fts::refresh_photos(tx, &members)?;
+            Ok(existed)
+        })
     }
 
     /// Sets or clears the cover photo.
@@ -149,6 +156,7 @@ impl Catalog {
                  SELECT ?1, photo_id, position FROM album_items WHERE album_id = ?2",
                 (new_id, id.get()),
             )?;
+            crate::fts::refresh_photos(tx, &crate::fts::photos_in_album(tx, AlbumId::new(new_id))?)?;
             Ok(tx.query_row(&format!("{SELECT} WHERE id = ?1"), [new_id], from_row)?)
         })
     }
@@ -166,11 +174,15 @@ impl Catalog {
             )?;
             let mut insert = tx.prepare_cached("INSERT OR IGNORE INTO album_items (album_id, photo_id, position) VALUES (?1, ?2, ?3)")?;
             let mut added = 0;
-            for photo in photos {
+            for photo in &photos {
                 if insert.execute((album.get(), photo.get(), next))? > 0 {
                     added += 1;
                     next += 1.0;
                 }
+            }
+            drop(insert);
+            if added > 0 {
+                crate::fts::refresh_photos(tx, &photos)?;
             }
             Ok(added)
         })
@@ -188,6 +200,9 @@ impl Catalog {
                 );
                 let params = std::iter::once(album.get()).chain(chunk.iter().map(|p| p.get()));
                 removed += tx.execute(&sql, rusqlite::params_from_iter(params))?;
+            }
+            if removed > 0 {
+                crate::fts::refresh_photos(tx, &photos)?;
             }
             Ok(removed)
         })

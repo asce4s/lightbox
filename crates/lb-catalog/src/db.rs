@@ -101,7 +101,12 @@ impl Catalog {
             tracing::warn!(%mode, "catalog is not in WAL mode");
         }
         writer.pragma_update(None, "synchronous", "NORMAL")?;
-        schema::migrate(&mut writer)?;
+        let from_version = schema::migrate(&mut writer)?;
+        if from_version < schema::FTS_REPOPULATE_BELOW {
+            let tx = writer.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            crate::fts::rebuild(&tx)?;
+            tx.commit()?;
+        }
 
         let pool_size = std::thread::available_parallelism()
             .map_or(1, usize::from)
