@@ -381,3 +381,37 @@ fn unreadable_status_and_error_are_stored() {
         (PhotoStatus::Unreadable, Some("truncated JPEG"))
     );
 }
+
+#[test]
+fn flags_are_set_in_batches_and_validated() {
+    let (_dir, catalog) = open();
+    let (_root, folder) = root_and_folder(&catalog);
+    let ids = insert_photos(&catalog, &folder, 3);
+    assert_eq!(catalog.set_starred(&ids[..2], true).unwrap(), 2);
+    assert_eq!(catalog.set_rating(&ids, 4).unwrap(), 3);
+    assert_eq!(catalog.set_hidden(&ids[2..], true).unwrap(), 1);
+    let photos = catalog.get_many(&ids).unwrap();
+    assert_eq!(
+        photos.iter().map(|p| p.starred).collect::<Vec<_>>(),
+        [true, true, false]
+    );
+    assert!(photos.iter().all(|p| p.rating == 4));
+    assert_eq!(
+        photos.iter().map(|p| p.hidden).collect::<Vec<_>>(),
+        [false, false, true]
+    );
+    assert!(
+        catalog.set_rating(&ids, 6).is_err(),
+        "schema CHECK rejects ratings above 5"
+    );
+    assert!(
+        catalog
+            .get_many(&ids)
+            .unwrap()
+            .iter()
+            .all(|p| p.rating == 4),
+        "failed batch changes nothing"
+    );
+    catalog.set_starred(&ids, false).unwrap();
+    assert!(catalog.get_many(&ids).unwrap().iter().all(|p| !p.starred));
+}

@@ -18,6 +18,9 @@ pub enum ScanError {
     /// The path is not valid UTF-8 and cannot be stored.
     #[error("path is not valid UTF-8: {0}")]
     NonUtf8Path(std::path::PathBuf),
+    /// The file-system watcher could not be created.
+    #[error("file watcher error: {0}")]
+    Watch(String),
     /// The referenced root does not exist.
     #[error("root not found")]
     RootNotFound,

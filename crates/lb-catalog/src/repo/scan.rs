@@ -74,6 +74,63 @@ impl Catalog {
         })
     }
 
+    /// The indexed file stored at exactly `path`, if any.
+    pub fn indexed_file_at(&self, path: &Path) -> Result<Option<IndexedFile>> {
+        let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+            return Ok(None);
+        };
+        let parent = path_str(parent)?.to_owned();
+        let name = path_str(Path::new(name))?.to_owned();
+        self.read(|c| {
+            let mut stmt = c.prepare_cached(
+                "SELECT p.id, p.folder_id, f.root_id, f.path, p.file_name, p.file_size,
+                        p.file_mtime, p.quick_key, p.status
+                 FROM photos p JOIN folders f ON f.id = p.folder_id
+                 WHERE f.path = ?1 AND p.file_name = ?2",
+            )?;
+            Ok(stmt
+                .query_map((parent, name), indexed_from_row)?
+                .next()
+                .transpose()?)
+        })
+    }
+
+    /// Whether any photo is currently marked missing.
+    pub fn has_missing(&self) -> Result<bool> {
+        self.read(|c| {
+            Ok(c.query_row(
+                "SELECT EXISTS(SELECT 1 FROM photos WHERE status = 'missing')",
+                [],
+                |r| r.get(0),
+            )?)
+        })
+    }
+
+    /// Photos marked missing whose quick key is one of `keys` (candidates for relinking after a
+    /// move, SPEC §6.3.2), ordered by id.
+    pub fn missing_by_quick_keys(&self, keys: &[String]) -> Result<Vec<IndexedFile>> {
+        let keys = keys.to_vec();
+        self.read(|c| {
+            let mut out = Vec::new();
+            for chunk in keys.chunks(500) {
+                let sql = format!(
+                    "SELECT p.id, p.folder_id, f.root_id, f.path, p.file_name, p.file_size,
+                            p.file_mtime, p.quick_key, p.status
+                     FROM photos p JOIN folders f ON f.id = p.folder_id
+                     WHERE p.status = 'missing' AND p.quick_key IN ({}) ORDER BY p.id",
+                    super::placeholders(chunk.len())
+                );
+                let mut stmt = c.prepare_cached(&sql)?;
+                let rows =
+                    stmt.query_map(rusqlite::params_from_iter(chunk.iter()), indexed_from_row)?;
+                for row in rows {
+                    out.push(row?);
+                }
+            }
+            Ok(out)
+        })
+    }
+
     /// Sets `status` (and `error`) on the given photos; returns how many rows changed.
     pub fn set_photos_status(
         &self,
