@@ -8,7 +8,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M0 — Scaffold (P0)
 
-- [ ] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
+- [x] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
 - [ ] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
 - [ ] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
 - [ ] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
@@ -123,9 +123,16 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 <!-- YYYY-MM-DD · task id · summary · tests added/changed -->
 
+2026-10-17 · M0.1 · Workspace with 16 crates + apps/lightbox + xtask stub, toolchain 1.99.1, workspace deps pinned exact, lints (unwrap/expect denied), `.cargo` xtask alias, Cargo.lock committed · no tests (scaffold); verified fmt, clippy -D warnings, test, doc, lb-app --no-default-features, and that `unwrap` in a lib is rejected by clippy
+
 ## Decisions
 
 <!-- YYYY-MM-DD · topic · decision · reason. Include every GPUI API adaptation and every golden update. -->
+
+- 2026-10-17 · toolchain · `rust-toolchain.toml` pins 1.99.1 (current stable) · edition 2024 needs >=1.85; sandbox shipped 1.83 so stable was installed via rustup.
+- 2026-10-17 · lb-app features · `default = [faces, video, map]`; P2 crates are optional deps forwarded by features; heavy impls (ONNX, ffmpeg) live behind further features inside those crates · SPEC §2 says P2 default-on but core tests pass with them off.
+- 2026-10-17 · lints · workspace `unwrap_used`/`expect_used` = deny, `clippy.toml` allows them in tests; `xtask` and `lb-testkit` opt out with a crate-level `allow` since they are tooling · SPEC says denied in library code only.
+- 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
 
 ## Blockers
 
