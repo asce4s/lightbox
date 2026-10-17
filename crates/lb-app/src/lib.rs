@@ -11,6 +11,7 @@ mod events;
 mod export;
 mod files;
 mod history;
+mod import;
 mod library;
 mod lightbox;
 mod paths;
@@ -37,6 +38,10 @@ pub use export::{
 };
 pub use files::{DeleteReport, MoveReport};
 pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
+pub use import::{
+    FileCopier, FolderNaming, IMPORT_TEMP_SUFFIX, ImportCandidate, ImportHandle, ImportOptions,
+    ImportReport, ImportService, ImportedFile, StdCopier,
+};
 pub use lb_jobs::JobQueue;
 pub use lb_scan::ScanSummary;
 pub use lb_thumbs::ThumbSize;

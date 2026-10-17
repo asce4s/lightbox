@@ -212,6 +212,17 @@ fn from_row(r: &Row<'_>) -> rusqlite::Result<Photo> {
     })
 }
 
+/// Stored hashes of one photo.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PhotoHashes {
+    /// The photo.
+    pub id: PhotoId,
+    /// Full-file blake3 hash, when computed.
+    pub content_hash: Option<String>,
+    /// 64-bit perceptual hash, when computed.
+    pub phash: Option<u64>,
+}
+
 impl Catalog {
     /// Inserts or updates `rows` in one transaction (SPEC §6.2.1 step 4) and returns one outcome
     /// per input row, in order. `now` becomes `indexed_at`.
@@ -336,6 +347,50 @@ impl Catalog {
             Ok(())
         })?;
         Ok(ids.iter().filter_map(|id| found.get(id).cloned()).collect())
+    }
+
+    /// Stores the full-file hash of a photo (SPEC §6.9, §6.11).
+    pub fn set_content_hash(&self, id: PhotoId, hash: &str) -> Result<()> {
+        let hash = hash.to_owned();
+        self.write(move |c| {
+            c.execute(
+                "UPDATE photos SET content_hash = ?1 WHERE id = ?2",
+                (hash, id.get()),
+            )?;
+            Ok(())
+        })
+    }
+
+    /// Stores the 64-bit perceptual hash of a photo (SPEC §6.11).
+    pub fn set_phash(&self, id: PhotoId, phash: u64) -> Result<()> {
+        self.write(move |c| {
+            c.execute(
+                "UPDATE photos SET phash = ?1 WHERE id = ?2",
+                (i64::from_ne_bytes(phash.to_ne_bytes()), id.get()),
+            )?;
+            Ok(())
+        })
+    }
+
+    /// Stored hashes of every readable image (videos and unreadable or missing files excluded), ordered
+    /// by id; hashes not computed yet are `None`.
+    pub fn photo_hashes(&self) -> Result<Vec<PhotoHashes>> {
+        self.read(|c| {
+            let mut stmt = c.prepare_cached(
+                "SELECT id, content_hash, phash FROM photos
+                 WHERE status = 'ok' AND media_type = 'image' ORDER BY id",
+            )?;
+            Ok(stmt
+                .query_map([], |r| {
+                    let phash: Option<i64> = r.get(2)?;
+                    Ok(PhotoHashes {
+                        id: PhotoId::new(r.get(0)?),
+                        content_hash: r.get(1)?,
+                        phash: phash.map(|v| u64::from_ne_bytes(v.to_ne_bytes())),
+                    })
+                })?
+                .collect::<rusqlite::Result<_>>()?)
+        })
     }
 
     /// Fetches one photo by id.

@@ -88,7 +88,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 - [x] **M9.1** Settings + theming. Tests: `settings_defaults`, `settings_roundtrip`, `settings_unknown_keys_ignored`, `theme_change_emits_event`, `ui_theme_toggle`.
 - [x] **M9.2** Timeline scrubber. Tests: `vm_timeline_buckets_by_month`, `ui_timeline_drag_scrolls_grid`.
-- [ ] **M9.3** Import. Tests: `import_copies_into_date_folders`, `import_skips_duplicates`, `import_verifies_hash`, `import_delete_source_only_after_verify`, `import_cancel_leaves_no_partial_files`.
+- [x] **M9.3** Import. Tests: `import_copies_into_date_folders`, `import_skips_duplicates`, `import_verifies_hash`, `import_delete_source_only_after_verify`, `import_cancel_leaves_no_partial_files`.
 - [ ] **M9.4** Duplicates. Tests: `exact_duplicates_grouped`, `resized_copy_is_similar`, `different_images_not_similar`, `bk_tree_matches_bruteforce`.
 - [ ] **M9.5** Slideshow. Tests: `slideshow_advances_on_tick`, `slideshow_pause_stops_advance`, `slideshow_loop_and_shuffle_deterministic_with_seed`, `slideshow_skips_unreadable`, `ui_slideshow_escape_exits`.
 - [ ] **M9.6** Collage. Tests: `golden_collage_grid_4`, `golden_collage_mosaic_7`, `golden_collage_pile_5_seed_42`, `collage_output_dimensions_exact`, `collage_deterministic_with_seed`, `collage_layout_never_exceeds_canvas`.
@@ -172,6 +172,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M8.6 · red-eye tool and before/after toggle (button and held backslash); tests ui_before_after_toggle_shows_original, vm_redeye_region_normalized, ui_redeye_drag_adds_region
 2026-10-17 · M9.1 · typed Settings sections stored per key (defaults, forward compatible, SettingsChanged events), LibraryVm reads grid/library settings, title-bar theme toggle (System/Light/Dark) persisted and applied live; tests settings_defaults, settings_roundtrip, settings_unknown_keys_ignored, theme_change_emits_event, ui_theme_toggle
 2026-10-17 · M9.2 · PhotoQueryResult.timeline month buckets (grid order, with the first photo of each month), LibraryVm timeline_jump/timeline_filter, timeline strip under the grid (drag scrolls, shift-drag sets the date chip, Clear dates button); tests vm_timeline_buckets_by_month, vm_timeline_jump_anchors_first_photo_of_month, vm_timeline_filter_sets_date_chip, ui_timeline_drag_scrolls_grid, ui_timeline_shift_drag_sets_date_range
+2026-10-17 · M9.3 · ImportService (discover with capture dates, volume detection, copy to temp name + blake3 verify + rename, date or date+title folders, duplicate skip against catalog and within the run, optional delete-source after verified copy, cancel removes the partial file, imported files indexed at once, foreground job with progress); catalog set_content_hash/set_phash/photo_hashes; tests import_copies_into_date_folders, import_skips_duplicates, import_verifies_hash, import_delete_source_only_after_verify, import_cancel_leaves_no_partial_files
 
 ## Decisions
 
@@ -298,6 +299,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - M9.1: settings are stored one JSON value per top-level section (`theme`, `grid`, `library`, `thumbs`, `export`, `slideshow`, `faces`, `map`, `video`); only sections that differ from what is stored are written, defaults are never stored, unreadable values fall back to defaults and unknown keys are left alone. `grid.group_by`/`grid.sort` default to `Month`/`DateTakenDesc` (what the grid already did since M6.5) instead of the SPEC table's `Folder`/`DateTakenAsc`, so a fresh library looks the same before and after settings exist. `grid.thumb_size` is S/M/L = 112/160/256 px.
 - M9.1: the theme button cycles System -> Light -> Dark; System uses the window appearance. A full Settings dialog is not built; the title-bar theme toggle is the UI for `theme`, the other sections are read at startup (grid, library) and by their features.
 - M9.2: timeline buckets are listed in grid order (first appearance in display order), not strictly chronological, so the left end of the scrubber is always the top of the grid whatever the sort or grouping. The strip spans the full window width above the tray instead of only under the grid. Segments have uniform width with bar height showing density. GPUI: `ScrollStrategy::Top` -> the virtual list only scrolls the item into view (nearest edge), so jumps set the offset with `VirtualListScrollHandle::set_offset`.
+- M9.3: `FileCopier` is the seam for fault injection (corrupt copy, cancel mid-copy); `StdCopier` copies in 256 KiB chunks and polls cancel between chunks. Duplicate detection compares full blake3 hashes: catalog photos are prefiltered by `quick_key` and their `content_hash` is computed lazily and stored. Dest that is not under an existing root is added as a `watch` root. The Import dialog, title-bar button and "Imports" sidebar entry are UI work scheduled after the M9 services (see the M9.8 entry).
 
 ## Blockers
 
