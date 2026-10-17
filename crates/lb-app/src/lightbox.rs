@@ -28,6 +28,9 @@ pub struct LightboxOptions {
     pub trash: Arc<dyn TrashBackend>,
     /// How files are opened and revealed.
     pub opener: Arc<dyn Opener>,
+    /// Source of map tiles; `None` fetches from the URL in the settings. Tests inject a local one.
+    #[cfg(feature = "map")]
+    pub tile_provider: Option<Arc<dyn lb_geo::TileProvider>>,
 }
 
 impl Default for LightboxOptions {
@@ -37,6 +40,8 @@ impl Default for LightboxOptions {
             spawn_event_ticker: true,
             trash: Arc::new(SystemTrash),
             opener: Arc::new(SystemOpener),
+            #[cfg(feature = "map")]
+            tile_provider: None,
         }
     }
 }
@@ -55,6 +60,8 @@ pub(crate) struct Inner {
     pub(crate) scan_cancel: AtomicBool,
     pub(crate) edit_lock: Mutex<()>,
     pub(crate) watcher: Mutex<Option<WatchService>>,
+    #[cfg(feature = "map")]
+    pub(crate) map: crate::map::MapState,
 }
 
 /// An open Lightbox library. Cheap to clone; all clones share the same state.
@@ -124,6 +131,8 @@ impl Lightbox {
                 scan_cancel: AtomicBool::new(false),
                 edit_lock: Mutex::new(()),
                 watcher: Mutex::new(None),
+                #[cfg(feature = "map")]
+                map: crate::map::MapState::new(options.tile_provider),
             }),
         })
     }

@@ -61,6 +61,7 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 tempfile = "=3.27.0"
 thiserror = "=2.0.21"
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
 toml = "=1.1.8"
 tracing = "=0.1.44"
 tracing-subscriber = "=0.3.23"

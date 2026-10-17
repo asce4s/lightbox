@@ -8,5 +8,18 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+default = ["http"]
+http = ["dep:ureq"]
+
 [dependencies]
 lb-core = { path = "../lb-core" }
+image = { workspace = true, features = ["png"] }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+ureq = { workspace = true, optional = true }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+proptest = { workspace = true }
+tempfile = { workspace = true }

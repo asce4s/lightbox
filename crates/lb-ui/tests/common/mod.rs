@@ -63,6 +63,7 @@ pub fn ui_library(spec: &[(&str, &[&str])]) -> UiLib {
         spawn_event_ticker: false,
         trash: trash.clone(),
         opener: opener.clone(),
+        ..LightboxOptions::default()
     };
     let app = Lightbox::open_with(home.path(), lb_app::JobQueue::inline(), options).unwrap();
     app.library()

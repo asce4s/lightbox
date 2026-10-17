@@ -308,6 +308,22 @@ impl Catalog {
         self.set_flag("hidden", ids, i64::from(hidden))
     }
 
+    /// Sets (or with `None` clears) the position of every photo in `ids` in one transaction;
+    /// returns rows changed. The altitude is dropped because it described the old position.
+    pub fn set_gps(&self, ids: &[PhotoId], gps: Option<GeoPoint>) -> Result<usize> {
+        let ids = ids.to_vec();
+        self.write_tx(move |tx| {
+            let mut stmt = tx.prepare_cached(
+                "UPDATE photos SET gps_lat = ?1, gps_lon = ?2, gps_alt = NULL WHERE id = ?3",
+            )?;
+            let mut changed = 0;
+            for id in &ids {
+                changed += stmt.execute((gps.map(|g| g.lat), gps.map(|g| g.lon), id.get()))?;
+            }
+            Ok(changed)
+        })
+    }
+
     /// Sets the rating (0..=5) of every photo in `ids` in one transaction. A value above 5
     /// violates the schema CHECK and fails the whole batch; returns rows changed.
     pub fn set_rating(&self, ids: &[PhotoId], rating: u8) -> Result<usize> {

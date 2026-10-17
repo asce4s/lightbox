@@ -16,6 +16,8 @@ mod history;
 mod import;
 mod library;
 mod lightbox;
+#[cfg(feature = "map")]
+mod map;
 mod paths;
 mod photos;
 mod query;
@@ -54,6 +56,8 @@ pub use lb_scan::ScanSummary;
 pub use lb_thumbs::ThumbSize;
 pub use library::LibraryService;
 pub use lightbox::{Lightbox, LightboxOptions};
+#[cfg(feature = "map")]
+pub use map::{ATTRIBUTION, CLUSTER_CELL_PX, MAX_ZOOM, MIN_ZOOM, MapService};
 pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};
 pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};
