@@ -589,3 +589,39 @@ fn cli_movie_e2e() {
         .assert()
         .code(1);
 }
+
+#[test]
+fn cli_xmp_e2e() {
+    let env = Env::empty();
+    write_jpeg(&env.photos.path().join("a.jpg"), 1);
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+    let id = s(env.all()[0]);
+    let sidecar = env.photos.path().join("a.jpg.xmp");
+
+    env.json(&["rate", &id, "2"]);
+    assert!(!sidecar.exists(), "off by default");
+
+    assert_eq!(env.json(&["xmp", "on"])["write_sidecars"], true);
+    env.json(&["rate", &id, "5"]);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"5\"")
+    );
+
+    env.json(&["xmp", "off"]);
+    env.json(&["rate", &id, "1"]);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"5\"")
+    );
+    let r = env.json(&["xmp", "write", &id]);
+    assert_eq!(r["written"].as_array().unwrap().len(), 1);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"1\"")
+    );
+    env.cmd(&["xmp", "write", "99999"]).assert().code(1);
+}

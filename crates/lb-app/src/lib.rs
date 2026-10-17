@@ -35,6 +35,7 @@ mod thumbs;
 #[cfg(feature = "video")]
 mod video;
 pub mod vm;
+mod xmp;
 
 pub use albums::AlbumService;
 pub use atomic::{TEMP_SUFFIX, write_atomic, write_bytes_atomic};
@@ -81,8 +82,9 @@ pub use search::{
 pub use settings::{
     ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings, SETTINGS_KEYS,
     Settings, SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings,
-    Transition, VideoSettings,
+    Transition, VideoSettings, XmpSettings,
 };
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};
 pub use thumbs::{ThumbService, ThumbTicket};
+pub use xmp::{XmpReport, XmpService};

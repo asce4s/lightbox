@@ -141,6 +141,12 @@ impl Lightbox {
         if options.spawn_event_ticker {
             bus.spawn_ticker()?;
         }
+        let xmp_catalog = catalog.clone();
+        bus.set_tap(move |event| {
+            if let AppEvent::PhotosChanged { ids } = event {
+                crate::xmp::sync_after_change(&xmp_catalog, ids);
+            }
+        });
         let history = HistoryService::new(catalog.clone(), bus.clone());
         tracing::info!(data = %paths.data.display(), "library opened");
         Ok(Self {

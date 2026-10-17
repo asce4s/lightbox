@@ -143,9 +143,13 @@ impl State {
     }
 }
 
+/// Called synchronously with every event, before it is coalesced or delivered.
+type Tap = Arc<dyn Fn(&AppEvent) + Send + Sync>;
+
 struct Inner {
     clock: Arc<dyn Clock>,
     state: Mutex<State>,
+    tap: Mutex<Option<Tap>>,
 }
 
 impl Inner {
@@ -180,6 +184,7 @@ impl EventBus {
                     subscribers: Vec::new(),
                     pending: Pending::default(),
                 }),
+                tap: Mutex::new(None),
             }),
         }
     }
@@ -191,8 +196,19 @@ impl EventBus {
         rx
     }
 
+    /// Installs a hook run on the emitting thread for every event, before coalescing, so work
+    /// that must not be lost or delayed (file write-back) sees each individual change. The hook
+    /// must not emit events itself.
+    pub(crate) fn set_tap(&self, tap: impl Fn(&AppEvent) + Send + Sync + 'static) {
+        *self.inner.tap.lock() = Some(Arc::new(tap));
+    }
+
     /// Publishes an event.
     pub fn emit(&self, event: AppEvent) {
+        let tap = self.inner.tap.lock().clone();
+        if let Some(tap) = tap {
+            tap(&event);
+        }
         let mut state = self.inner.state.lock();
         match event {
             AppEvent::PhotosChanged { ids } => {

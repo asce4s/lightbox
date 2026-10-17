@@ -71,6 +71,11 @@ enum Command {
     Movie(MovieArgs),
     /// Import star, caption, tags, albums, edits and faces from `.picasa.ini` files.
     PicasaImport(PicasaArgs),
+    /// XMP sidecar write-back for stars, tags and captions.
+    Xmp {
+        #[command(subcommand)]
+        action: XmpCmd,
+    },
     /// Thumbnail cache maintenance.
     Thumbs {
         #[command(subcommand)]
@@ -138,6 +143,20 @@ enum TagCmd {
     Remove {
         /// Tag name.
         tag: String,
+        /// Photo ids.
+        #[arg(required = true)]
+        ids: Vec<i64>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum XmpCmd {
+    /// Keep a `{file}.xmp` sidecar up to date for every changed photo.
+    On,
+    /// Stop writing sidecars.
+    Off,
+    /// Write the sidecars of these photos now.
+    Write {
         /// Photo ids.
         #[arg(required = true)]
         ids: Vec<i64>,
@@ -423,6 +442,7 @@ pub fn run(cli: Cli) -> CliResult {
             )
         }
         Command::Tag { action } => tag(&lb, action),
+        Command::Xmp { action } => xmp(&lb, action),
         Command::Album { action } => album(&lb, action),
         Command::Edit { action } => edit(&lb, action),
         Command::Render(a) => render(&lb, &a),
@@ -582,6 +602,36 @@ fn tag(lb: &Lightbox, action: TagCmd) -> CliResult {
             if add { "added" } else { "removed" }
         ),
     )
+}
+
+fn xmp(lb: &Lightbox, action: XmpCmd) -> CliResult {
+    match action {
+        XmpCmd::On | XmpCmd::Off => {
+            let on = matches!(action, XmpCmd::On);
+            lb.settings().update(|s| s.xmp.write_sidecars = on)?;
+            out(
+                json!({ "write_sidecars": on }),
+                format!("XMP sidecars are {}", if on { "on" } else { "off" }),
+            )
+        }
+        XmpCmd::Write { ids } => {
+            let ids = photo_ids(lb, &ids)?;
+            let report = lb.xmp().write(&ids)?;
+            let failed: Vec<Value> = report
+                .failed
+                .iter()
+                .map(|(id, why)| json!({ "id": id.get(), "reason": why }))
+                .collect();
+            out(
+                json!({ "written": report.written, "failed": failed }),
+                format!(
+                    "wrote {} sidecar(s), {} failed",
+                    report.written.len(),
+                    report.failed.len()
+                ),
+            )
+        }
+    }
 }
 
 fn album(lb: &Lightbox, action: AlbumCmd) -> CliResult {

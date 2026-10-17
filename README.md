@@ -141,6 +141,7 @@ lightbox-cli query "beach rating:>=3 year:2021"
 lightbox-cli star 12 13 14
 lightbox-cli rate 12 5
 lightbox-cli tag add holiday 12 13
+lightbox-cli xmp on                       # keep {file}.xmp sidecars current (also: xmp off, xmp write <ids>)
 lightbox-cli album create "Summer"        # also: album add <album-id> <photo-ids>, album list
 lightbox-cli edit push 12 '{"op":"sepia"}'  # also: edit show, undo, revert
 lightbox-cli render 12 preview.png --max-edge 1280
