@@ -1,7 +1,12 @@
 //! UI-agnostic viewer: geometry, motion, navigation and loading (SPEC-VIEWER).
 
+mod motion;
 mod transform;
 
+pub use motion::{
+    LayerState, Motion, MotionMode, Presented, ease_in_cubic, ease_in_out_cubic, ease_out_cubic,
+    ease_out_quad,
+};
 pub use transform::{
     DRAG_THRESHOLD_PX, FILMSTRIP_HEIGHT, FramedView, Gesture, GestureState, INFO_PANEL_WIDTH,
     Insets, NAV_DEBOUNCE, PIXEL_ZOOM_DIVISOR, RectF, SWIPE_THRESHOLD, ScrollDelta, ScrollMods,

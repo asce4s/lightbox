@@ -1,9 +1,11 @@
-//! State of the single-photo viewer (SPEC §9.4).
+//! State of the single-photo viewer (SPEC §9.4, SPEC-VIEWER §V4).
 
 use crate::error::Result;
 use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
+use crate::viewer::{Motion, MotionMode, Presented, RectF};
 use lb_core::{Photo, PhotoId};
+use std::time::Duration;
 
 /// Smallest and largest zoom factor.
 pub const ZOOM_LIMITS: (f32, f32) = (0.05, 16.0);
@@ -39,6 +41,7 @@ pub struct ViewerVm {
     zoom: ZoomMode,
     pan: (f32, f32),
     show_info: bool,
+    motion: Motion,
 }
 
 impl ViewerVm {
@@ -52,7 +55,36 @@ impl ViewerVm {
             zoom: ZoomMode::Fit,
             pan: (0.0, 0.0),
             show_info: false,
+            motion: Motion::new(MotionMode::Full, (0.0, 0.0)),
         })
+    }
+
+    /// The frame at `now` (`Clock::elapsed()`). Geometry is sampled, not animated by GPUI.
+    pub fn presented(&self, now: Duration) -> Presented {
+        self.motion.presented(now)
+    }
+
+    /// Whether the view should ask for another frame.
+    pub fn is_animating(&self, now: Duration) -> bool {
+        self.motion.is_animating(now)
+    }
+
+    /// Motion state. The UI samples [`Self::presented`] from this.
+    pub fn motion_mut(&mut self) -> &mut Motion {
+        &mut self.motion
+    }
+
+    /// Remembers the stage size used by navigate slides.
+    pub fn set_stage(&mut self, stage: (f32, f32)) {
+        self.motion.set_stage(stage);
+    }
+
+    /// Starts the overlay open from a thumbnail rect.
+    pub fn begin_open(&mut self, now: Duration, source: Option<RectF>, fit: RectF) {
+        match source {
+            Some(source) => self.motion.open_from_thumbnail(now, source, fit),
+            None => self.motion.open_plain(now, fit),
+        }
     }
 
     /// The photo being shown.
