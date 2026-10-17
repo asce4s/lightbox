@@ -1,6 +1,7 @@
 //! Domain types, ids, errors and the settings model. Performs no I/O.
 #![warn(missing_docs)]
 
+mod clock;
 mod edit;
 mod error;
 mod ids;
@@ -8,6 +9,7 @@ mod library;
 mod photo;
 mod query;
 
+pub use clock::{Clock, SystemClock};
 #[cfg(feature = "test-strategies")]
 pub use edit::strategies;
 pub use edit::{EditError, EditOp, EditStack, NormRect, RetouchSpot};

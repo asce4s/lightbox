@@ -1336,6 +1336,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "directories"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
+dependencies = [
+ "dirs-sys 0.5.0",
+]
+
+[[package]]
 name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3868,6 +3877,11 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 name = "lb-app"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "crossbeam-channel",
+ "directories",
+ "image",
+ "indexmap",
  "lb-catalog",
  "lb-core",
  "lb-faces",
@@ -3878,8 +3892,15 @@ dependencies = [
  "lb-picasa",
  "lb-scan",
  "lb-search",
+ "lb-testkit",
  "lb-thumbs",
  "lb-video",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -4014,8 +4035,10 @@ name = "lb-testkit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "image",
  "kamadak-exif",
+ "lb-core",
  "parking_lot",
  "serde",
  "tempfile",

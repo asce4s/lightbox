@@ -27,3 +27,17 @@ lb-faces = { path = "../lb-faces", optional = true }
 lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
+chrono = { workspace = true }
+crossbeam-channel = { workspace = true }
+directories = { workspace = true }
+indexmap = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+tempfile = { workspace = true }
+image = { workspace = true, features = ["jpeg", "png"] }

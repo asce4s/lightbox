@@ -370,4 +370,14 @@ impl Catalog {
                 .collect::<rusqlite::Result<_>>()?)
         })
     }
+
+    /// Ids of every photo, ascending.
+    pub fn all_photo_ids(&self) -> Result<Vec<PhotoId>> {
+        self.read(|c| {
+            let mut stmt = c.prepare_cached("SELECT id FROM photos ORDER BY id")?;
+            Ok(stmt
+                .query_map([], |r| Ok(PhotoId::new(r.get(0)?)))?
+                .collect::<rusqlite::Result<_>>()?)
+        })
+    }
 }

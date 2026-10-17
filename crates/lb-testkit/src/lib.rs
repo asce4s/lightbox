@@ -2,12 +2,14 @@
 #![warn(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod clock;
 pub mod fixtures;
 mod goldens;
 mod home;
 mod image_cmp;
 mod wait;
 
+pub use clock::FakeClock;
 pub use goldens::{MAX_DIFF, MIN_PSNR, UPDATE_ENV, assert_golden, golden_path};
 pub use home::{LIGHTBOX_HOME_ENV, TestHome};
 pub use image_cmp::{
