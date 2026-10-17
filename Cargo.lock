@@ -3943,6 +3943,9 @@ name = "lb-jobs"
 version = "0.1.0"
 dependencies = [
  "lb-core",
+ "parking_lot",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -4013,9 +4016,16 @@ dependencies = [
 name = "lb-thumbs"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "image",
  "lb-core",
  "lb-imaging",
  "lb-media",
+ "lb-testkit",
+ "parking_lot",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
