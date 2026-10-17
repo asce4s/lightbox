@@ -1,0 +1,39 @@
+# cargo-deny policy (SPEC §13 step 9). Default dependency tree: no GPL/AGPL.
+
+[graph]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "OFL-1.1",
+    "0BSD",
+    "CC0-1.0",
+]
+confidence-threshold = 0.9
+
+[advisories]
+# Unmaintained notices for crates pulled in transitively by gpui-kit cannot be acted on.
+# Vulnerability and yanked checks still cover the whole tree.
+unmaintained = "workspace"
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -14,7 +14,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - [x] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
 - [x] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
 - [x] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
-- [ ] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
+- [x] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
 
 ## M1 — Catalog (P0)
 
@@ -147,8 +147,12 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - 2026-10-17 · gpui-kit pin · `gpui-kit = "=0.7.3"` (resolves gpui-pre 0.3.9, gpui-component 0.7.3). Linux packages installed on Ubuntu 24.04: `libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (+ `xvfb`, not required by the headless harness). The §3.2 list was sufficient.
 - 2026-10-17 · lint · `missing_docs` moved from `[workspace.lints.rust]` to `#![warn(missing_docs)]` in every library crate · workspace-wide it also fired on integration-test crates (`tests/*.rs`) under `-D warnings`; SPEC §15 only requires docs on public library items.
 - 2026-10-17 · lb-ui entry point · `lb_ui::run()` owns the GPUI bootstrap so `apps/lightbox` depends only on lb-app + lb-ui (SPEC §4.2); `ids` currently holds only `HELLO_LABEL` and grows with each UI task.
+- 2026-10-17 · deny.toml · extra licenses allowed beyond the §13 list: `0BSD` (enum-iterator) and `CC0-1.0` (notify, hexf-parse, tiny-keccak) · both are permissive public-domain-style licenses required by the GPUI/notify trees; GPL/AGPL stay denied by the allow-list. `[advisories] unmaintained = "workspace"` because RUSTSEC unmaintained notices for `instant`, `paste`, `rustybuzz`, `ttf-parser` come only transitively through gpui-kit and cannot be fixed here; vulnerability/yanked checks still cover the whole tree. On `CI` env, xtask fails (not skips) if cargo-deny is missing.
+- 2026-10-17 · CI scope · workflow has the 3-OS matrix only; the separate `coverage`, `perf` and `nightly` jobs from §13 are added with M11.2/M11.1/M10.3 respectively. UI tests need no `xvfb-run` on Linux (verified with `DISPLAY` unset).
 - 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
 
 ## Blockers
 
 <!-- YYYY-MM-DD · task id · exact error · what was tried · tasks affected -->
+
+- 2026-10-17 · M0.7 · not a blocker, a verification gap: the macOS and Windows legs of `ci.yml` have never run (only Linux locally). Fix any platform-specific failures from the first pushed run before starting M1; affected: all tasks' cross-OS exit criterion (SPEC §14 M0).
