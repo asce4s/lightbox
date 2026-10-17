@@ -12,3 +12,12 @@ workspace = true
 lb-core = { path = "../lb-core" }
 lb-catalog = { path = "../lb-catalog" }
 lb-media = { path = "../lb-media" }
+chrono = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+walkdir = { workspace = true }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+tempfile = { workspace = true }

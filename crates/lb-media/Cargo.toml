@@ -10,3 +10,15 @@ workspace = true
 
 [dependencies]
 lb-core = { path = "../lb-core" }
+blake3 = { workspace = true }
+chrono = { workspace = true }
+image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }
+jpeg-decoder = { workspace = true }
+kamadak-exif = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+fast_image_resize = { workspace = true, features = ["image"] }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+tempfile = { workspace = true }

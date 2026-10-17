@@ -5,6 +5,7 @@ mod edits;
 mod folders;
 mod photos;
 mod roots;
+mod scan;
 mod settings;
 mod tags;
 
@@ -16,6 +17,7 @@ mod tests;
 pub use edits::EditRecord;
 pub use folders::NewFolder;
 pub use photos::{PhotoUpsert, UpsertOutcome};
+pub use scan::IndexedFile;
 
 use crate::error::{CatalogError, Result};
 use chrono::NaiveDateTime;
