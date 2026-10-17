@@ -287,6 +287,35 @@ impl Catalog {
         })
     }
 
+    /// Sets the starred flag of every photo in `ids` in one transaction; returns rows changed.
+    pub fn set_starred(&self, ids: &[PhotoId], starred: bool) -> Result<usize> {
+        self.set_flag("starred", ids, i64::from(starred))
+    }
+
+    /// Sets the hidden flag of every photo in `ids` in one transaction; returns rows changed.
+    pub fn set_hidden(&self, ids: &[PhotoId], hidden: bool) -> Result<usize> {
+        self.set_flag("hidden", ids, i64::from(hidden))
+    }
+
+    /// Sets the rating (0..=5) of every photo in `ids` in one transaction. A value above 5
+    /// violates the schema CHECK and fails the whole batch; returns rows changed.
+    pub fn set_rating(&self, ids: &[PhotoId], rating: u8) -> Result<usize> {
+        self.set_flag("rating", ids, i64::from(rating))
+    }
+
+    fn set_flag(&self, column: &'static str, ids: &[PhotoId], value: i64) -> Result<usize> {
+        let ids = ids.to_vec();
+        self.write_tx(move |tx| {
+            let mut stmt =
+                tx.prepare_cached(&format!("UPDATE photos SET {column} = ?1 WHERE id = ?2"))?;
+            let mut changed = 0;
+            for id in &ids {
+                changed += stmt.execute((value, id.get()))?;
+            }
+            Ok(changed)
+        })
+    }
+
     /// Fetches photos by id. The result follows the order of `ids` (duplicates repeated); ids
     /// that do not exist are skipped.
     pub fn get_many(&self, ids: &[PhotoId]) -> Result<Vec<Photo>> {

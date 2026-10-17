@@ -77,3 +77,66 @@ impl Env {
         self.catalog.get_many(&ids).unwrap()
     }
 }
+
+use lb_scan::{FolderManager, WatchConfig, WatchService};
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
+pub const WAIT: Duration = Duration::from_secs(10);
+
+pub fn fast_watch() -> WatchConfig {
+    WatchConfig {
+        debounce: Duration::from_millis(50),
+        settle: Duration::from_millis(20),
+    }
+}
+
+pub struct Watching {
+    pub manager: FolderManager,
+    pub service: WatchService,
+    pub events: Arc<Mutex<Vec<ScanEvent>>>,
+}
+
+pub fn watch(env: &Env, cfg: WatchConfig) -> Watching {
+    let manager = FolderManager::new(env.scanner.clone());
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let sink = events.clone();
+    let service =
+        WatchService::start(manager.clone(), cfg, move |e| sink.lock().unwrap().push(e)).unwrap();
+    Watching {
+        manager,
+        service,
+        events,
+    }
+}
+
+/// Copies `src` to `dst` and sets a deterministic mtime (`base + offset_s`), so size-and-mtime
+/// change detection never depends on wall-clock resolution.
+pub fn put(src: &Path, dst: &Path, offset_s: u64) {
+    if let Some(parent) = dst.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::copy(src, dst).unwrap();
+    let mtime = SystemTime::UNIX_EPOCH + Duration::from_secs(1_577_836_800 + offset_s);
+    std::fs::File::options()
+        .write(true)
+        .open(dst)
+        .unwrap()
+        .set_modified(mtime)
+        .unwrap();
+}
+
+pub fn add_watch_root(w: &Watching, dir: &Path) -> Root {
+    let change = w
+        .manager
+        .add_root(
+            dir,
+            RootMode::Watch,
+            chrono::NaiveDateTime::default(),
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+    w.service.sync_roots().unwrap();
+    change.root.unwrap()
+}
