@@ -66,14 +66,14 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M7 — UI shell: library (P0)
 
-- [ ] **M7.1** Main window layout (title bar, sidebar, grid area, info panel, tray, status bar) with `Resizable` panels; `ids` module. Test: `ui_launch_shows_grid_with_groups`.
-- [ ] **M7.2** Virtualized grid with group headers, zoom slider, thumbnails streaming via `ThumbReady`. Tests: `ui_grid_renders_only_visible_rows` (count of observed cells ≤ visible + overscan), `ui_zoom_changes_column_count`.
-- [ ] **M7.3** Selection & keyboard. Tests: `ui_click_selects_and_shift_click_extends`, `ui_keyboard_rating_and_star`, `ui_arrow_keys_move_focus`.
-- [ ] **M7.4** Sidebar sources (All, Starred, Recently edited, Albums, Folders tree). Tests: `ui_sidebar_navigation_changes_source`, `ui_new_album_and_add_selection`.
-- [ ] **M7.5** Search box + chips. Tests: `ui_search_filters_grid`, `ui_chip_starred_filters`.
-- [ ] **M7.6** Context menu + confirm dialogs for file ops. Tests: `ui_delete_shows_confirm_and_cancels`, `ui_rename_dialog_validates`.
-- [ ] **M7.7** Photo tray (P1 but built here). Tests: `ui_tray_hold_and_clear`, `ui_star_from_tray_updates_catalog`.
-- [ ] **M7.8** Export dialog wired to ExportService. Test: `ui_export_dialog_runs_job`.
+- [x] **M7.1** Main window layout (title bar, sidebar, grid area, info panel, tray, status bar) with `Resizable` panels; `ids` module. Test: `ui_launch_shows_grid_with_groups`.
+- [x] **M7.2** Virtualized grid with group headers, zoom slider, thumbnails streaming via `ThumbReady`. Tests: `ui_grid_renders_only_visible_rows` (count of observed cells ≤ visible + overscan), `ui_zoom_changes_column_count`.
+- [x] **M7.3** Selection & keyboard. Tests: `ui_click_selects_and_shift_click_extends`, `ui_keyboard_rating_and_star`, `ui_arrow_keys_move_focus`.
+- [x] **M7.4** Sidebar sources (All, Starred, Recently edited, Albums, Folders tree). Tests: `ui_sidebar_navigation_changes_source`, `ui_new_album_and_add_selection`.
+- [x] **M7.5** Search box + chips. Tests: `ui_search_filters_grid`, `ui_chip_starred_filters`.
+- [x] **M7.6** Context menu + confirm dialogs for file ops. Tests: `ui_delete_shows_confirm_and_cancels`, `ui_rename_dialog_validates`.
+- [x] **M7.7** Photo tray (P1 but built here). Tests: `ui_tray_hold_and_clear`, `ui_star_from_tray_updates_catalog`.
+- [x] **M7.8** Export dialog wired to ExportService. Test: `ui_export_dialog_runs_job`.
 
 ## M8 — Viewer + Editor UI (P0)
 
@@ -156,6 +156,14 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M6.7 · `lb-app::vm`: `LibraryVm` (selection, keyboard navigation, tray, chips/search with 150 ms clock debounce, zoom/columns, scroll anchor, organize intents), `GridLayout` row virtualization, `ViewerVm`, `EditorVm` (draft sliders, one-op commit, undo/redo/revert, before/after), `ExportDialogVm` (validation, job phases); `AppError::user_message` · tests: `vm_selection_click_shift_ctrl`, `vm_keyboard_navigation_grid`, `vm_editor_slider_preview_then_commit`, `vm_scroll_anchor_preserved_on_resort`, `vm_library_intents_and_events`, `vm_grid_layout_virtualizes_rows`, `vm_search_debounce_uses_the_clock`, `vm_viewer_navigation_and_zoom`, `vm_export_dialog_validation_and_run`
 2026-10-17 · M6.8 · M6.8 · lightbox-cli (roots/scan/query/star/rate/tag/album/edit/render/export/thumbs/doctor), --json output, exit codes 0/1/2, Lightbox::doctor · 13 cli_*_e2e tests
 2026-10-17 · M6.9 · M6.9 · atomic write helper (temp+fsync+rename), crash log writer + panic hook + pending/dismiss, exhaustive AppError user-message test · user_messages_for_all_error_variants, atomic_write_leaves_no_partial_on_error, crash_log_is_written_and_reported_until_dismissed
+2026-10-17 · M7.1 · LightboxWindow (title bar, chips, resizable sidebar/grid/info panels, tray, status bar), `lb_ui::ids`, open_for_test, real binary opens the library · ui_launch_shows_grid_with_groups
+2026-10-17 · M7.2 · virtualized grid via v_virtual_list with header/cell rows, zoom slider, thumbnails requested at Interactive priority and refreshed on ThumbReady · ui_grid_renders_only_visible_rows, ui_zoom_changes_column_count
+2026-10-17 · M7.3 · click/shift/ctrl selection with real modifiers, arrow/Home/End/Enter/Space/S/0-5/Ctrl+R/Ctrl+A/Esc/Delete/Ctrl+Z key handling · ui_click_selects_and_shift_click_extends, ui_keyboard_rating_and_star, ui_arrow_keys_move_focus
+2026-10-17 · M7.4 · sidebar sources (All, Starred, Recently edited, Albums, Folders by year) with count badges and New album · ui_sidebar_navigation_changes_source, ui_new_album_and_add_selection, vm_sidebar_sections_counts_and_selection
+2026-10-17 · M7.5 · search box (150 ms debounce, Enter applies now) and filter chips · ui_search_filters_grid, ui_chip_starred_filters
+2026-10-17 · M7.6 · context menu, delete confirm, rename dialog with live validation, tag dialog, album picker · ui_delete_shows_confirm_and_cancels, ui_rename_dialog_validates, vm_confirm_delete_message_and_accept, vm_rename_validates_live
+2026-10-17 · M7.7 · photo tray (hold, clear, persists across sources, is the action target before the selection) · ui_tray_hold_and_clear, ui_star_from_tray_updates_catalog
+2026-10-17 · M7.8 · export dialog wired to ExportService (destination, size, GPS, PNG, progress and result) · ui_export_dialog_runs_job
 
 ## Decisions
 
@@ -262,6 +270,15 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - M6.8: `collage`, `dupes`, `picasa-import` CLI subcommands arrive with their services (M9.4, M9.6, M10.4) together with their `cli_<subcommand>_e2e` tests. `scan --wait` is accepted and is a no-op (CLI uses inline jobs). `export --strip-gps` => KeepExifNoGps, otherwise KeepAll. Query positional allows hyphen-leading text (`-tag:x`).
 - M6.8: `is:edited` / `has:edits` now mean "non-empty edit stack" (`json_array_length(ops_json) > 0`) because a row persists after revert/undo to hold the redo stack. Parser snapshot regenerated for this SQL change only. `QuerySource::RecentlyEdited` in lb-catalog is unchanged (ops_json is opaque there).
 - M6.9: crash logs live in `{data}/crash-<utc>-<pid>.log`; `install_panic_hook(data_dir)` must be called by the app binary at startup (M7.1) and `pending_crash_logs` drives the next-start notice. Existing ad-hoc temp+rename code (files.rs, thumbs cache, export) is kept; new writers use `write_atomic`.
+- M7.1–M7.8 were built as one UI slice and committed together (one commit, all task ids) because the window, grid, overlays and tray share one view type.
+- GPUI: SPEC `Dialog`/`Menu`/`Popover` → in-view overlays (scrim + panel, ids from `lb_ui::ids`) driven by `Overlay` state; they give deterministic ids and need no `Root` dialog layer. `Button::disabled(true)` does not report `disabled()` to the test harness, so tests assert that clicking does nothing.
+- GPUI: SPEC `Sidebar`/`Toggle` components → plain divs and `Button::toggled` (ids and VM state are the contract). Resizable panels use `h_resizable` with a `ResizableState` the grid reads its width from.
+- GPUI: `uniform_list` → `gpui_kit::component::v_virtual_list` with per-row sizes (header rows and cell rows have different heights), so no custom two-height element is needed.
+- GPUI: modifiers on clicks are not part of `TestWindowExt::click`; tests dispatch `MouseDownEvent`/`MouseUpEvent` with `Modifiers` themselves (`click_with` in `tests/common`).
+- UI: the window pumps `AppEvent`s itself (`LightboxWindow::pump`): a 16 ms background loop in production (`open`), explicit calls in tests (`open_for_test`, FakeClock for the 150 ms search debounce).
+- UI: Import/Slideshow/Collage/Settings title-bar buttons are not drawn until their milestone (M9); only Export and search are in the title bar.
+- lb-app additions for the UI: `SidebarVm`, `ConfirmVm`, `RenameVm` (+ `PhotoService::check_rename`), `ThumbService::request_visible`, `LibraryVm::take_error`, `EventReceiver` re-export.
+- `is:edited` etc. unchanged. The sidebar hides empty folders that have no capture date.
 
 ## Blockers
 

@@ -126,9 +126,13 @@ impl PhotoService {
         self.get(id)?.ok_or(AppError::NotFound("photo"))
     }
 
-    /// Renames the file of `id`. A name without a dot keeps the current extension; one with a
-    /// dot replaces it and must be a supported media extension.
-    pub fn rename(&self, id: PhotoId, new_name: &str) -> Result<Photo> {
+    /// Works out the file name `new_name` stands for and validates it without touching the disk
+    /// beyond an existence check.
+    fn plan_rename(
+        &self,
+        id: PhotoId,
+        new_name: &str,
+    ) -> Result<(Photo, String, std::path::PathBuf)> {
         let photo = self.existing(id)?;
         let new_name = new_name.trim();
         validate_file_name(new_name)?;
@@ -148,11 +152,23 @@ impl PhotoService {
             return Err(invalid(format!("\".{ext}\" is not a supported file type")));
         }
         let target = photo.path.with_file_name(&name);
+        if target != photo.path && target.exists() {
+            return Err(AppError::AlreadyExists(target));
+        }
+        Ok((photo, name, target))
+    }
+
+    /// Validates a rename without performing it (used for live validation in the rename dialog).
+    pub fn check_rename(&self, id: PhotoId, new_name: &str) -> Result<()> {
+        self.plan_rename(id, new_name).map(drop)
+    }
+
+    /// Renames the file of `id`. A name without a dot keeps the current extension; one with a
+    /// dot replaces it and must be a supported media extension.
+    pub fn rename(&self, id: PhotoId, new_name: &str) -> Result<Photo> {
+        let (photo, name, target) = self.plan_rename(id, new_name)?;
         if target == photo.path {
             return Ok(photo);
-        }
-        if target.exists() {
-            return Err(AppError::AlreadyExists(target));
         }
         std::fs::rename(&photo.path, &target)?;
         if let Err(e) =

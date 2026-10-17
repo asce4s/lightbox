@@ -129,7 +129,12 @@ impl LibraryVm {
         self.zoom
     }
 
-    /// The message of the last failed intent, if any.
+    /// Takes the message of the last failed intent, if any.
+    pub fn take_error(&mut self) -> Option<String> {
+        self.last_error.take()
+    }
+
+    /// Message of the last failed intent, if any.
     pub fn last_error(&self) -> Option<&str> {
         self.last_error.as_deref()
     }
