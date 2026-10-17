@@ -17,6 +17,7 @@ mod paths;
 mod photos;
 mod query;
 mod search;
+mod settings;
 mod system;
 mod tags;
 mod thumbs;
@@ -46,6 +47,11 @@ pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};
 pub use query::ViewSource;
 pub use search::{FilterChips, Group, GroupKey, PhotoQueryResult, SearchService, ViewQuery};
+pub use settings::{
+    ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings, SETTINGS_KEYS,
+    Settings, SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings,
+    Transition, VideoSettings,
+};
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};
 pub use thumbs::{ThumbService, ThumbTicket};

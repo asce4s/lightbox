@@ -81,9 +81,14 @@ pub struct LibraryVm {
 impl LibraryVm {
     /// A grid over all photos, grouped by month, showing nothing until [`Self::refresh`].
     pub fn new(lb: &Lightbox) -> Self {
+        let settings = lb.settings().load().unwrap_or_default();
+        let mut view = ViewQuery::new(ViewSource::AllPhotos);
+        view.group_by = settings.grid.group_by;
+        view.sort = settings.grid.sort;
+        view.show_hidden = settings.library.show_hidden;
         Self {
             lb: lb.clone(),
-            view: ViewQuery::new(ViewSource::AllPhotos),
+            view,
             result: PhotoQueryResult::default(),
             order: Vec::new(),
             pos: HashMap::new(),
@@ -91,7 +96,7 @@ impl LibraryVm {
             focused: None,
             tray: IndexSet::new(),
             scroll_anchor: None,
-            zoom: DEFAULT_ZOOM,
+            zoom: settings.grid.thumb_size.zoom_px(),
             viewport_width: 1200.0,
             layout: GridLayout::default(),
             pending_search: None,
@@ -263,6 +268,15 @@ impl LibraryVm {
     /// Replaces the filter chips.
     pub fn set_chips(&mut self, chips: FilterChips) {
         self.view.chips = chips;
+        self.refresh_logged();
+    }
+
+    /// Applies the grid and library sections of changed settings.
+    pub fn apply_settings(&mut self, settings: &crate::Settings) {
+        self.view.group_by = settings.grid.group_by;
+        self.view.sort = settings.grid.sort;
+        self.view.show_hidden = settings.library.show_hidden;
+        self.zoom = settings.grid.thumb_size.zoom_px();
         self.refresh_logged();
     }
 

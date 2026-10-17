@@ -86,7 +86,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M9 — P1 features
 
-- [ ] **M9.1** Settings + theming. Tests: `settings_defaults`, `settings_roundtrip`, `settings_unknown_keys_ignored`, `theme_change_emits_event`, `ui_theme_toggle`.
+- [x] **M9.1** Settings + theming. Tests: `settings_defaults`, `settings_roundtrip`, `settings_unknown_keys_ignored`, `theme_change_emits_event`, `ui_theme_toggle`.
 - [ ] **M9.2** Timeline scrubber. Tests: `vm_timeline_buckets_by_month`, `ui_timeline_drag_scrolls_grid`.
 - [ ] **M9.3** Import. Tests: `import_copies_into_date_folders`, `import_skips_duplicates`, `import_verifies_hash`, `import_delete_source_only_after_verify`, `import_cancel_leaves_no_partial_files`.
 - [ ] **M9.4** Duplicates. Tests: `exact_duplicates_grouped`, `resized_copy_is_similar`, `different_images_not_similar`, `bk_tree_matches_bruteforce`.
@@ -170,6 +170,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M8.4 · effects grid with mini previews and parameter panels; tests ui_effect_apply_and_cancel, effect_table_matches_op_names_and_validates, hue_to_rgb_is_in_gamut
 2026-10-17 · M8.5 · crop tool with aspect presets, handles, thirds overlay, nudging, plus straighten overlay; tests vm_crop_aspect_lock, crop_presets_follow_orientation, crop_move_nudge_and_op, ui_crop_apply_pushes_crop_op
 2026-10-17 · M8.6 · red-eye tool and before/after toggle (button and held backslash); tests ui_before_after_toggle_shows_original, vm_redeye_region_normalized, ui_redeye_drag_adds_region
+2026-10-17 · M9.1 · typed Settings sections stored per key (defaults, forward compatible, SettingsChanged events), LibraryVm reads grid/library settings, title-bar theme toggle (System/Light/Dark) persisted and applied live; tests settings_defaults, settings_roundtrip, settings_unknown_keys_ignored, theme_change_emits_event, ui_theme_toggle
 
 ## Decisions
 
@@ -293,6 +294,8 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - M8 not built (not in a task): Retouch tool, Neutral colour eyedropper, caption editor and mini-map in the info panel; the info panel shows file, size, dimensions, date, camera, GPS and caption.
 - GPUI: SPEC `Slider` ids → the slider is wrapped in a `div` with the `lb_ui::ids` id (the component's own id is entity based); tests click/drag inside that wrapper. SPEC "hold `\`" → key down sets Before, key up clears it (`on_key_up`), plus a toggle button.
 - lb-app additions for M8: `PreviewFile`, `EditService::preview_file`, `vm::{CropVm, AspectPreset, CropHandle, RedEyeVm, DisplayRect, EffectPanelVm, EFFECTS}` and `ConfirmAction::Revert`.
+- M9.1: settings are stored one JSON value per top-level section (`theme`, `grid`, `library`, `thumbs`, `export`, `slideshow`, `faces`, `map`, `video`); only sections that differ from what is stored are written, defaults are never stored, unreadable values fall back to defaults and unknown keys are left alone. `grid.group_by`/`grid.sort` default to `Month`/`DateTakenDesc` (what the grid already did since M6.5) instead of the SPEC table's `Folder`/`DateTakenAsc`, so a fresh library looks the same before and after settings exist. `grid.thumb_size` is S/M/L = 112/160/256 px.
+- M9.1: the theme button cycles System -> Light -> Dark; System uses the window appearance. A full Settings dialog is not built; the title-bar theme toggle is the UI for `theme`, the other sections are read at startup (grid, library) and by their features.
 
 ## Blockers
 

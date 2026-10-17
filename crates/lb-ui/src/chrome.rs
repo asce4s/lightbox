@@ -36,6 +36,16 @@ impl LightboxWindow {
             )
             .child(div().flex_1())
             .child(
+                Button::new(ids::THEME_TOGGLE)
+                    .label(match self.theme {
+                        lb_app::ThemeChoice::System => "Theme: System",
+                        lb_app::ThemeChoice::Light => "Theme: Light",
+                        lb_app::ThemeChoice::Dark => "Theme: Dark",
+                    })
+                    .tooltip("Switch between system, light and dark")
+                    .on_click(cx.listener(|this, _, window, cx| this.cycle_theme(window, cx))),
+            )
+            .child(
                 div()
                     .w(px(280.))
                     .child(Input::new(&self.search).id(ids::SEARCH_INPUT)),

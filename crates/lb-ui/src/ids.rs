@@ -92,6 +92,7 @@ ids! {
     TAG_OK = "tag-ok",
     TAG_CANCEL = "tag-cancel",
     TOAST = "toast",
+    THEME_TOGGLE = "theme-toggle",
     VIEWER_BACK = "viewer-back",
     VIEWER_EDIT = "viewer-edit",
     VIEWER_INFO = "viewer-info",
