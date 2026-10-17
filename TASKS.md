@@ -1,0 +1,132 @@
+# TASKS.md — Build plan and progress tracker
+
+Work top to bottom. Each task lists the SPEC sections and the acceptance tests (AC) that prove it. Tick `[x]` only when the Definition of Done (SPEC §15) holds. Keep the Progress Log, Decisions and Blockers sections at the bottom up to date.
+
+Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
+
+---
+
+## M0 — Scaffold (P0)
+
+- [ ] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
+- [ ] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
+- [ ] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
+- [ ] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
+- [ ] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
+- [ ] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
+- [ ] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
+
+## M1 — Catalog (P0)
+
+- [ ] **M1.1** Domain types & ids in `lb-core` (SPEC §5.1, §5.3). Tests: `ids_serde_transparent`, `sort_order_roundtrip`.
+- [ ] **M1.2** Schema V1 + `rusqlite_migration`; writer thread + read pool; WAL. Tests: `migrations_apply_on_empty_db`, `migrate_from_v1_fixture`, `foreign_keys_enforced`, `writer_serializes_concurrent_writes`.
+- [ ] **M1.3** Repositories: roots, folders, photos (upsert batch, get_many, by path, by quick_key), edits, albums (+ fractional positions), tags, settings. Tests: `photo_upsert_batch_500`, `get_many_preserves_order`, `album_reorder_fractional_positions`, `album_renormalize_positions`, `tag_normalization`.
+- [ ] **M1.4** FTS5 maintenance + `rebuild_fts`. Tests: `fts_updated_on_caption_tag_album_change`, `fts_incremental_equals_rebuild`.
+- [ ] **M1.5** Backups & integrity (SPEC §10). Tests: `catalog_backup_rotation`, `catalog_restore_from_backup`.
+
+## M2 — Media + Scan + Folder Manager (P0)
+
+- [ ] **M2.1** `lb-media` decode with orientation, DCT-scaled JPEG, first-frame GIF/WebP, panic containment. Tests: `decode_all_basic_formats`, `exif_orientation_6_swaps_dimensions`, `decoder_panic_is_caught`, `corrupt_files_marked_unreadable_without_panic`.
+- [ ] **M2.2** Metadata extraction + `taken_at` precedence + GPS (SPEC §6.2.2). Tests: `taken_at_precedence`, `gps_parsed_to_decimal_degrees`, `filename_date_patterns`.
+- [ ] **M2.3** Hashing: `quick_key`, full `content_hash` (streaming). Tests: `quick_key_stable`, `content_hash_matches_blake3_cli_vector`.
+- [ ] **M2.4** Scanner (walk, skip rules, batching, idempotence, progress events). Tests: `scan_indexes_basic_fixture_set`, `scan_is_idempotent`, `scanner_skips_hidden_and_system_dirs`, `scan_emits_progress_and_finished`.
+- [ ] **M2.5** Folder Manager modes + nested override + path normalization. Tests: `folder_manager_once_does_not_watch`, `folder_manager_exclude_removes_catalog_rows_not_files`, `folder_manager_nested_override`, `path_normalization_table`.
+
+## M3 — Watcher (P0)
+
+- [ ] **M3.1** Debounced watcher → rescan file/subtree; in-progress copy detection. Tests: `watcher_detects_new_file`, `watcher_detects_modified_file_updates_metadata`, `watcher_detects_delete_marks_missing`, `folder_manager_watch_scans_and_watches`.
+- [ ] **M3.2** Move/rename detection (watcher + full rescan). Tests: `rename_preserves_metadata`, `move_across_folders_preserves_metadata`, `rescan_relinks_moved_file`.
+
+## M4 — Jobs + Thumbnails (P0)
+
+- [ ] **M4.1** `lb-jobs` (SPEC §6.5). Tests: `jobs_priority_order`, `jobs_cancel_before_start`, `jobs_cancel_cooperative`, `jobs_coalesce_duplicates`, `jobs_panic_is_contained`, `jobs_wait_idle`.
+- [ ] **M4.2** `lb-thumbs` generation + disk cache + atomic writes + GC (SPEC §6.4). Tests: `thumbnail_respects_orientation`, `thumbnail_long_edge_exact`, `thumbnail_cache_hit_does_not_decode`, `thumbnail_cache_gc_evicts_lru`, `thumbnail_write_is_atomic`.
+
+## M5 — Edit pipeline (P0)
+
+- [ ] **M5.1** `EditOp`/`EditStack` types, validation, canonical hash, serde. Tests: `edit_stack_serde_roundtrip`, `stack_hash_stable_across_runs`, `edit_op_validation_table`.
+- [ ] **M5.2** Color utilities (sRGB transfer, luma, smoothstep, Gaussian blur separable). Tests: `srgb_roundtrip`, `gaussian_kernel_sums_to_one`, `blur_constant_image_unchanged`.
+- [ ] **M5.3** Geometry ops: RotateQuarter, Crop, Straighten. Tests: `rotate_four_quarters_is_identity`, `crop_full_is_identity`, `straighten_zero_is_identity`, `straighten_has_no_transparent_corners`, goldens `golden_straighten_7deg_gradient`, `golden_crop_center_portrait`.
+- [ ] **M5.4** Auto ops: AutoContrast, AutoColor, FeelingLucky, FillLight, Tuning. Tests: `auto_contrast_idempotent_within_tolerance`, `auto_contrast_noop_on_flat_image`, goldens for each op on `low_contrast_400.png` and `portrait_patches_640x480.jpg`.
+- [ ] **M5.5** Effects: Sharpen, Sepia, B&W, Warmify, FilmGrain, Tint, Saturation, SoftFocus, Glow, FocalB&W, GraduatedTint, Vignette, RedEye. Tests: `ops_never_produce_out_of_range` (proptest over all ops), `film_grain_deterministic_with_seed`, goldens `golden_<op>_<fixture>` for each.
+- [ ] **M5.6** Render API with proxy/full targets. Tests: `proxy_and_full_render_similar`, `render_is_bit_identical_across_runs`.
+- [ ] **M5.7** (P1) Retouch op. Tests: `golden_retouch_patch`, `retouch_outside_bounds_clamped`.
+
+## M6 — Service layer, organize, search, export, CLI (P0)
+
+- [ ] **M6.1** `Lightbox` facade, events with coalescing, `HistoryService`. Tests: `open_creates_home_layout`, `events_coalesced_within_16ms`, `history_undo_star_tag_album`.
+- [ ] **M6.2** EditService (push/replace-on-drag/undo/redo/revert, edit_version bump, thumbnail invalidation). Tests: `slider_drag_coalesces_into_one_op`, `undo_redo_semantics`, `revert_is_undoable`, `thumbnail_reflects_edits`, `original_file_unchanged_after_edits`.
+- [ ] **M6.3** Organize: stars, ratings, captions, hidden, tags, albums. Tests: `star_toggle_batch`, `rating_bounds_enforced`, `caption_saved_and_indexed_in_fts`, `hidden_excluded_by_default`, `tag_rename_merges`, `tag_autocomplete_prefix`, `album_crud`, `album_delete_keeps_photos`.
+- [ ] **M6.4** File ops with `TrashBackend`: rename, move (same/cross volume), delete-to-trash, reveal/open, relink missing. Tests: `rename_file_updates_catalog`, `rename_rejects_invalid_names`, `move_cross_folder_preserves_id`, `delete_moves_to_trash`, `relink_missing_by_quick_key`.
+- [ ] **M6.5** `lb-search` parser + SQL plan; SearchService; ViewQuery grouping. Tests: `parser_table_tests`, `parser_never_panics`, `parser_params_bound`, `search_fts_prefix`, `search_tag_negation`, `search_date_range_inclusive`, `search_rating_comparison`, `search_combines_with_chips`, `view_query_groups_by_folder_and_month`.
+- [ ] **M6.6** ExportService. Tests: `export_resizes_long_edge`, `export_applies_edits`, `export_strip_gps`, `export_keep_exif_resets_orientation`, `export_watermark_present`, `export_collision_policy`, `export_cancel_cleans_temp`.
+- [ ] **M6.7** View-models (Library, Viewer, Editor, ExportDialog). Tests: `vm_selection_click_shift_ctrl`, `vm_keyboard_navigation_grid`, `vm_editor_slider_preview_then_commit`, `vm_scroll_anchor_preserved_on_resort`.
+- [ ] **M6.8** CLI (SPEC §8). Tests: `cli_<subcommand>_e2e` for every subcommand, `cli_exit_codes`.
+- [ ] **M6.9** Error mapping & crash log. Tests: `user_messages_for_all_error_variants`, `atomic_write_leaves_no_partial_on_error`.
+
+## M7 — UI shell: library (P0)
+
+- [ ] **M7.1** Main window layout (title bar, sidebar, grid area, info panel, tray, status bar) with `Resizable` panels; `ids` module. Test: `ui_launch_shows_grid_with_groups`.
+- [ ] **M7.2** Virtualized grid with group headers, zoom slider, thumbnails streaming via `ThumbReady`. Tests: `ui_grid_renders_only_visible_rows` (count of observed cells ≤ visible + overscan), `ui_zoom_changes_column_count`.
+- [ ] **M7.3** Selection & keyboard. Tests: `ui_click_selects_and_shift_click_extends`, `ui_keyboard_rating_and_star`, `ui_arrow_keys_move_focus`.
+- [ ] **M7.4** Sidebar sources (All, Starred, Recently edited, Albums, Folders tree). Tests: `ui_sidebar_navigation_changes_source`, `ui_new_album_and_add_selection`.
+- [ ] **M7.5** Search box + chips. Tests: `ui_search_filters_grid`, `ui_chip_starred_filters`.
+- [ ] **M7.6** Context menu + confirm dialogs for file ops. Tests: `ui_delete_shows_confirm_and_cancels`, `ui_rename_dialog_validates`.
+- [ ] **M7.7** Photo tray (P1 but built here). Tests: `ui_tray_hold_and_clear`, `ui_star_from_tray_updates_catalog`.
+- [ ] **M7.8** Export dialog wired to ExportService. Test: `ui_export_dialog_runs_job`.
+
+## M8 — Viewer + Editor UI (P0)
+
+- [ ] **M8.1** Viewer with zoom/pan/filmstrip/info panel. Tests: `ui_open_viewer_and_navigate`, `ui_viewer_escape_returns_focus`.
+- [ ] **M8.2** Editor tabs + Lucky/Auto + undo/redo/revert. Tests: `ui_editor_lucky_then_undo`, `ui_editor_revert_confirm`.
+- [ ] **M8.3** Tuning sliders with preview-then-commit. Test: `ui_editor_slider_commits_one_op`.
+- [ ] **M8.4** Effects grid + param panels. Test: `ui_effect_apply_and_cancel`.
+- [ ] **M8.5** Crop & Straighten tools. Tests: `vm_crop_aspect_lock`, `ui_crop_apply_pushes_crop_op`.
+- [ ] **M8.6** Red-eye tool; before/after toggle (P1). Tests: `ui_before_after_toggle_shows_original`, `vm_redeye_region_normalized`.
+
+## M9 — P1 features
+
+- [ ] **M9.1** Settings + theming. Tests: `settings_defaults`, `settings_roundtrip`, `settings_unknown_keys_ignored`, `theme_change_emits_event`, `ui_theme_toggle`.
+- [ ] **M9.2** Timeline scrubber. Tests: `vm_timeline_buckets_by_month`, `ui_timeline_drag_scrolls_grid`.
+- [ ] **M9.3** Import. Tests: `import_copies_into_date_folders`, `import_skips_duplicates`, `import_verifies_hash`, `import_delete_source_only_after_verify`, `import_cancel_leaves_no_partial_files`.
+- [ ] **M9.4** Duplicates. Tests: `exact_duplicates_grouped`, `resized_copy_is_similar`, `different_images_not_similar`, `bk_tree_matches_bruteforce`.
+- [ ] **M9.5** Slideshow. Tests: `slideshow_advances_on_tick`, `slideshow_pause_stops_advance`, `slideshow_loop_and_shuffle_deterministic_with_seed`, `slideshow_skips_unreadable`, `ui_slideshow_escape_exits`.
+- [ ] **M9.6** Collage. Tests: `golden_collage_grid_4`, `golden_collage_mosaic_7`, `golden_collage_pile_5_seed_42`, `collage_output_dimensions_exact`, `collage_deterministic_with_seed`, `collage_layout_never_exceeds_canvas`.
+- [ ] **M9.7** Batch rename patterns. Test: `batch_rename_pattern_table`.
+- [ ] **M9.8** Rubber-band selection. Test: `ui_rubber_band_selects_cells`.
+
+## M10 — P2 features (feature-gated)
+
+- [ ] **M10.1** `map`: lb-geo math, tile cache, provider, map panel, set location. Tests: `mercator_roundtrip`, `tiles_for_viewport`, `cluster_counts_sum_to_markers`, `tile_cache_ttl`, `set_location_updates_catalog`, `no_network_in_tests`.
+- [ ] **M10.2** `video`: ffprobe parse, thumbnails, duration badge, open externally. Tests: `ffprobe_json_parsed`, `video_thumbnail_command_built_correctly`, `video_rotation_swaps_dimensions`, `video_iso6709_location_parsed`, `video_integration_ffmpeg` (runs when ffmpeg present).
+- [ ] **M10.3** `faces`: traits, mocks, pipeline, clustering, People UI, person search. Tests: `faces_detected_and_stored_normalized`, `cluster_assigns_similar_embeddings`, `name_cluster_creates_person`, `merge_people`, `remove_face_from_person`, `person_search`, `faces_real_model_smoke` (ignored unless env). `xtask models` with SHA-256 verification; record model licenses in Decisions.
+- [ ] **M10.4** Picasa `.picasa.ini` import. Tests: `picasa_ini_parse_fixture`, `rect64_decode`, `crop64_maps_to_crop`, `finetune2_maps_to_tuning`, `picasa_import_idempotent`, `picasa_import_does_not_overwrite_by_default`, `picasa_albums_and_contacts`.
+
+## M11 — Hardening
+
+- [ ] **M11.1** Perf budgets (SPEC §11) via `xtask perf` + criterion benches. Tests: `search_100k_under_budget` and the rest of the table as perf checks.
+- [ ] **M11.2** Coverage thresholds (SPEC §12.7) in CI.
+- [ ] **M11.3** Global invariants guard in testkit (SPEC §12.6) applied to all integration tests.
+- [ ] **M11.4** Packaging per OS (SPEC §13); `lightbox-cli doctor`.
+- [ ] **M11.5** README: install, build deps per OS, usage, architecture diagram, shortcuts table.
+
+## M12 — P3 (optional)
+
+- [ ] **M12.1** Movie maker (ffmpeg). Test: `movie_maker_builds_expected_ffmpeg_pipeline`.
+- [ ] **M12.2** XMP sidecars. Tests: `xmp_written_next_to_file`, `xmp_never_touches_original`.
+- [ ] **M12.3** HEIC (`heif`) and RAW embedded preview (`raw`). Tests behind features with small fixtures.
+- [ ] **M12.4** ICC profile conversion to sRGB on decode. Test: `icc_display_p3_converted`.
+
+---
+
+## Progress Log
+
+<!-- YYYY-MM-DD · task id · summary · tests added/changed -->
+
+## Decisions
+
+<!-- YYYY-MM-DD · topic · decision · reason. Include every GPUI API adaptation and every golden update. -->
+
+## Blockers
+
+<!-- YYYY-MM-DD · task id · exact error · what was tried · tasks affected -->
