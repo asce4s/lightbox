@@ -355,7 +355,7 @@ impl Drop for TempGuard {
     }
 }
 
-fn encode_jpeg(img: &DynamicImage, quality: u8) -> Result<Vec<u8>> {
+pub(crate) fn encode_jpeg(img: &DynamicImage, quality: u8) -> Result<Vec<u8>> {
     let rgb = img.to_rgb8();
     let mut out = Vec::new();
     JpegEncoder::new_with_quality(&mut out, quality)

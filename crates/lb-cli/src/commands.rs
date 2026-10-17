@@ -65,6 +65,8 @@ enum Command {
     Export(ExportArgs),
     /// Find exact and similar photos.
     Dupes(DupesArgs),
+    /// Build a collage JPEG from photos.
+    Collage(CollageArgs),
     /// Thumbnail cache maintenance.
     Thumbs {
         #[command(subcommand)]
@@ -211,6 +213,24 @@ struct ExportArgs {
     /// Drop GPS data from the exported EXIF.
     #[arg(long)]
     strip_gps: bool,
+}
+
+#[derive(Debug, Args)]
+struct CollageArgs {
+    /// `grid`, `mosaic`, `pile` or `frame`.
+    layout: String,
+    /// Photo ids (2 to 200).
+    #[arg(required = true)]
+    ids: Vec<i64>,
+    /// Output JPEG file.
+    #[arg(long)]
+    out: PathBuf,
+    /// Output size as `WxH`.
+    #[arg(long, default_value = "1920x1080")]
+    size: String,
+    /// Seed of the pile's randomness.
+    #[arg(long, default_value_t = 0)]
+    seed: u64,
 }
 
 #[derive(Debug, Args)]
@@ -370,6 +390,7 @@ pub fn run(cli: Cli) -> CliResult {
         Command::Render(a) => render(&lb, &a),
         Command::Export(a) => export(&lb, &a),
         Command::Dupes(a) => dupes(&lb, &a),
+        Command::Collage(a) => collage(&lb, &a),
         Command::Thumbs { action } => {
             let ThumbsCmd::Warm { size } = action;
             thumbs_warm(&lb, &size)
@@ -571,6 +592,31 @@ fn render(lb: &Lightbox, a: &RenderArgs) -> CliResult {
             img.width(),
             img.height()
         ),
+    )
+}
+
+fn collage(lb: &Lightbox, a: &CollageArgs) -> CliResult {
+    let layout = lb_app::CollageLayout::parse(&a.layout)
+        .ok_or_else(|| user("layout must be grid, mosaic, pile or frame"))?;
+    let size =
+        lb_app::CollageSize::parse(&a.size).ok_or_else(|| user("size must look like 1920x1080"))?;
+    let ids = photo_ids(lb, &a.ids)?;
+    let opts = lb_app::CollageOptions {
+        layout,
+        size,
+        seed: a.seed,
+        ..lb_app::CollageOptions::default()
+    };
+    let made = lb.collage().create(&ids, &opts, &a.out)?;
+    let (width, height) = size.dimensions();
+    out(
+        json!({
+            "path": made.path,
+            "id": made.id.map(|i| i.get()),
+            "width": width,
+            "height": height,
+        }),
+        format!("saved {} ({width}x{height})", made.path.display()),
     )
 }
 

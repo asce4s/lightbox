@@ -431,3 +431,49 @@ fn cli_dupes_e2e() {
     assert!(String::from_utf8_lossy(&text.get_output().stdout).starts_with("exact"));
     env.cmd(&["dupes", "--threshold", "99"]).assert().code(1);
 }
+
+#[test]
+fn cli_collage_e2e() {
+    let env = Env::empty();
+    for (i, n) in ["a", "b", "c"].iter().enumerate() {
+        write_jpeg(&env.photos.path().join(format!("{n}.jpg")), i as u8);
+    }
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+    let ids = env.all();
+    let out = env.photos.path().join("out").join("c.jpg");
+    let (a, b, c) = (s(ids[0]), s(ids[1]), s(ids[2]));
+    let r = env.json(&[
+        "collage",
+        "pile",
+        &a,
+        &b,
+        &c,
+        "--out",
+        out.to_str().unwrap(),
+        "--size",
+        "400x300",
+        "--seed",
+        "42",
+    ]);
+    assert_eq!(r["width"], 400);
+    assert_eq!(image::image_dimensions(&out).unwrap(), (400, 300));
+
+    env.cmd(&["collage", "spiral", &a, &b, "--out", out.to_str().unwrap()])
+        .assert()
+        .code(1);
+    env.cmd(&["collage", "grid", &a, "--out", out.to_str().unwrap()])
+        .assert()
+        .code(1);
+    env.cmd(&[
+        "collage",
+        "grid",
+        &a,
+        &b,
+        "--out",
+        out.to_str().unwrap(),
+        "--size",
+        "big",
+    ])
+    .assert()
+    .code(1);
+}

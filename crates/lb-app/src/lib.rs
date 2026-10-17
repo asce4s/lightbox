@@ -3,6 +3,7 @@
 
 mod albums;
 mod atomic;
+mod collage;
 mod crash;
 mod doctor;
 mod dupes;
@@ -27,6 +28,9 @@ pub mod vm;
 
 pub use albums::AlbumService;
 pub use atomic::{TEMP_SUFFIX, write_atomic, write_bytes_atomic};
+pub use collage::{
+    CollageLayout, CollageOptions, CollageService, CollageSize, CreatedCollage, PREVIEW_EDGE,
+};
 pub use crash::{dismiss_crash_logs, install_panic_hook, pending_crash_logs, write_crash_log};
 pub use crossbeam_channel::Receiver as EventReceiver;
 pub use doctor::{DoctorReport, FACE_MODELS_ENV};
