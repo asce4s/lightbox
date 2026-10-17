@@ -3,6 +3,7 @@
 
 mod decode;
 mod error;
+mod exif_copy;
 mod extract;
 mod format;
 mod hash;
@@ -13,6 +14,7 @@ mod taken_at;
 
 pub use decode::{Decoder, DefaultDecoder, apply_orientation, decode, decode_with, guard};
 pub use error::{MediaError, Result};
+pub use exif_copy::{ExifRewrite, embed_exif, jpeg_exif, map_jpeg_exif, raw_exif, rewrite_exif};
 pub use extract::{ImageMetadata, extract_image, fallback_taken_at};
 pub use format::{
     Capabilities, format_for_extension, is_supported_extension, sniff_format, supported_extensions,

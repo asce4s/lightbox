@@ -415,3 +415,12 @@ fn flags_are_set_in_batches_and_validated() {
     catalog.set_starred(&ids, false).unwrap();
     assert!(catalog.get_many(&ids).unwrap().iter().all(|p| !p.starred));
 }
+
+#[test]
+fn all_photo_ids_ascending() {
+    let (_dir, catalog) = open();
+    let (_, folder) = root_and_folder(&catalog);
+    assert!(catalog.all_photo_ids().unwrap().is_empty());
+    let ids = insert_photos(&catalog, &folder, 5);
+    assert_eq!(catalog.all_photo_ids().unwrap(), ids);
+}

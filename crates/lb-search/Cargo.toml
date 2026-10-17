@@ -10,3 +10,8 @@ workspace = true
 
 [dependencies]
 lb-core = { path = "../lb-core" }
+chrono = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+proptest = { workspace = true }

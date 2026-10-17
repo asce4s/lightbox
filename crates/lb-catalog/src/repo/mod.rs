@@ -4,6 +4,7 @@ mod albums;
 mod edits;
 mod folders;
 mod photos;
+mod query;
 mod roots;
 mod scan;
 mod settings;
@@ -17,6 +18,7 @@ mod tests;
 pub use edits::EditRecord;
 pub use folders::NewFolder;
 pub use photos::{PhotoUpsert, UpsertOutcome};
+pub use query::{PhotoQuery, QueryRow, QuerySource, SqlFragment};
 pub use scan::IndexedFile;
 
 use crate::error::{CatalogError, Result};

@@ -1,13 +1,16 @@
 //! Domain types, ids, errors and the settings model. Performs no I/O.
 #![warn(missing_docs)]
 
+mod clock;
 mod edit;
 mod error;
 mod ids;
 mod library;
 mod photo;
+mod ports;
 mod query;
 
+pub use clock::{Clock, SystemClock};
 #[cfg(feature = "test-strategies")]
 pub use edit::strategies;
 pub use edit::{EditError, EditOp, EditStack, NormRect, RetouchSpot};
@@ -18,4 +21,5 @@ pub use library::{
     normalize_tag_name,
 };
 pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
-pub use query::{GroupBy, Selection, SortOrder};
+pub use ports::{Opener, TrashBackend};
+pub use query::{GroupBy, PHOTO_DATE_SQL, Selection, SortOrder, SqlValue};

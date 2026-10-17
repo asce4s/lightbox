@@ -7,6 +7,7 @@ pub mod color;
 pub mod convert;
 pub mod ops;
 pub mod render;
+pub mod text;
 
 pub use image::Rgba32FImage;
 pub use render::{Cancelled, RenderCtx, RenderTarget, render, render_cancellable};

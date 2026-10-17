@@ -9,6 +9,8 @@ publish = false
 workspace = true
 
 [dependencies]
+lb-core = { path = "../lb-core" }
+chrono = { workspace = true }
 anyhow = { workspace = true }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }
 serde = { workspace = true }

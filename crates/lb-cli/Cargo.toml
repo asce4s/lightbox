@@ -11,6 +11,15 @@ workspace = true
 [dependencies]
 lb-app = { path = "../lb-app" }
 lb-core = { path = "../lb-core" }
+clap = { workspace = true }
+image = { workspace = true, features = ["png"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+tempfile = { workspace = true }
+image = { workspace = true, features = ["png", "jpeg"] }
 
 [[bin]]
 name = "lightbox-cli"
