@@ -42,6 +42,14 @@ pub fn env_with(opts: ScanOptions) -> Env {
     }
 }
 
+impl Drop for Env {
+    fn drop(&mut self) {
+        let _ = lb_testkit::Invariants::new()
+            .catalog(&self.dir.path().join("catalog.sqlite3"))
+            .no_temp_files_in(self.dir.path());
+    }
+}
+
 impl Env {
     /// A fresh private directory under the temp dir.
     pub fn subdir(&self, name: &str) -> PathBuf {

@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 struct Lib {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     src: tempfile::TempDir,
     out: tempfile::TempDir,
@@ -58,6 +59,7 @@ impl Lib {
         let lb = Lightbox::open_in(home.path(), JobQueue::inline()).unwrap();
         lb.library().add_root(src.path(), RootMode::Watch).unwrap();
         Self {
+            _invariants: common::invariants(home.path(), &[src.path()]),
             _home: home,
             src,
             out: tempfile::tempdir().unwrap(),

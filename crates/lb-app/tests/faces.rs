@@ -2,6 +2,8 @@
 #![cfg(feature = "faces")]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod common;
+
 use image::{Rgb, RgbImage};
 use lb_app::{AppEvent, Lightbox, LightboxOptions, ViewQuery, ViewSource};
 use lb_core::{NormRect, PeopleKey, PhotoId, RootMode};
@@ -15,6 +17,7 @@ const BOB: usize = 1;
 const CY: usize = 2;
 
 struct Faces {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     dir: tempfile::TempDir,
     lb: Lightbox,
@@ -52,6 +55,7 @@ fn setup() -> Faces {
     let lb = Lightbox::open_with(home.path(), JobQueue::inline(), pipeline_options()).unwrap();
     lb.library().add_root(dir.path(), RootMode::Watch).unwrap();
     Faces {
+        _invariants: common::invariants(home.path(), &[dir.path()]),
         _home: home,
         dir,
         lb,

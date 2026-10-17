@@ -13,6 +13,7 @@ fn name_of(p: &lb_core::Photo) -> String {
 }
 
 struct Lib {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     _photos: tempfile::TempDir,
     lb: Lightbox,
@@ -33,6 +34,7 @@ impl Lib {
             .add_root(photos.path(), RootMode::Watch)
             .unwrap();
         Self {
+            _invariants: common::invariants(home.path(), &[photos.path()]),
             _home: home,
             _photos: photos,
             lb,

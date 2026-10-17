@@ -17,6 +17,7 @@ use std::time::Duration;
 fn scan_indexes_basic_fixture_set() {
     let env = env();
     let basic = generated_basic();
+    let _invariants = lb_testkit::Invariants::new().originals_exact(&basic);
     let root = env.add_root(&basic.canonicalize().unwrap(), RootMode::Once);
     let (summary, _) = env.scan(&root);
     let manifest = Manifest::load_default().unwrap();

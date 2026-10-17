@@ -11,7 +11,7 @@ use rusqlite::Transaction;
 
 /// Produces one FTS row per photo: `(rowid, file_name, caption, tags, folder_path, camera,
 /// people, album_names)`. Group concatenations are ordered so the output is deterministic.
-const ROW_SELECT: &str = "
+pub(crate) const ROW_SELECT: &str = "
 SELECT p.id,
        p.file_name,
        COALESCE(p.caption, ''),
@@ -28,7 +28,7 @@ SELECT p.id,
            WHERE ai.photo_id = p.id ORDER BY al.name, al.id)), '')
 FROM photos p JOIN folders f ON f.id = p.folder_id";
 
-const INSERT_COLUMNS: &str = "INSERT INTO photos_fts (rowid, file_name, caption, tags, folder_path, camera, people, album_names)";
+pub(crate) const INSERT_COLUMNS: &str = "INSERT INTO photos_fts (rowid, file_name, caption, tags, folder_path, camera, people, album_names)";
 
 const CHUNK: usize = 500;
 

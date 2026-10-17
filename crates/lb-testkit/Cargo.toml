@@ -10,6 +10,8 @@ workspace = true
 
 [dependencies]
 lb-core = { path = "../lb-core" }
+lb-catalog = { path = "../lb-catalog" }
+blake3 = { workspace = true }
 chrono = { workspace = true }
 anyhow = { workspace = true }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }

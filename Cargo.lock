@@ -4182,6 +4182,7 @@ dependencies = [
  "image",
  "lb-app",
  "lb-core",
+ "lb-testkit",
  "predicates",
  "serde_json",
  "tempfile",
@@ -4321,9 +4322,11 @@ name = "lb-testkit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "blake3",
  "chrono",
  "image",
  "kamadak-exif",
+ "lb-catalog",
  "lb-core",
  "parking_lot",
  "serde",

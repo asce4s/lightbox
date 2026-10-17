@@ -17,6 +17,17 @@ fn write_jpeg(path: &Path, seed: u8) {
     img.save(path).unwrap();
 }
 
+impl Drop for Env {
+    fn drop(&mut self) {
+        let catalog = self.home.path().join("data/catalog.sqlite3");
+        let cache = self.home.path().join("cache");
+        let _ = lb_testkit::Invariants::new()
+            .catalog(&catalog)
+            .no_temp_files_in(self.photos.path())
+            .no_temp_files_in(&cache);
+    }
+}
+
 impl Env {
     /// A library with three photos `IMG_2021061{1,2,3}_120000.jpg`, already added as a root.
     fn new() -> Self {

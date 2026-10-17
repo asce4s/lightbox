@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 struct Rig {
+    _invariants: lb_testkit::Invariants,
     _home: tempfile::TempDir,
     _dir: tempfile::TempDir,
     lb: Lightbox,
@@ -42,6 +43,7 @@ fn rig(n: usize, corrupt: &[usize]) -> Rig {
     all.sort_by(|a, b| a.path.cmp(&b.path));
     let ids = all.iter().map(|p| p.id).collect();
     Rig {
+        _invariants: common::invariants(home.path(), &[dir.path()]),
         _home: home,
         _dir: dir,
         lb,
