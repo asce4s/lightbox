@@ -74,6 +74,11 @@ macOS 13+ (Apple Silicon and x86_64), Windows 10/11 x64, Linux x86_64 (X11 and W
 | F25 | Movie maker (slideshow → MP4 via ffmpeg) | P3 | 6.12.3 |
 | F26 | XMP sidecar write-back for stars/ratings/tags/captions | P3 | 6.7.6 |
 | F27 | HEIC and camera RAW decoding (`heif`, `raw` features) | P3 | 6.2.3 |
+| F28 | Viewer overlay: ambient backdrop, open/close/navigate animations | P0 | SPEC-VIEWER.md |
+| F29 | Standalone viewer (`lightbox view`), single instance, files outside the library | P0 | SPEC-VIEWER.md |
+| F30 | Register as the OS default image viewer, with restore | P0 | SPEC-VIEWER.md |
+| F31 | Animated GIF/WebP playback, copy image, transparency checkerboard in viewer | P1 | SPEC-VIEWER.md |
+| F32 | Tiled full-resolution zoom for > 100 MP images | P2 | SPEC-VIEWER.md |
 
 ### 2.2 Out of scope
 
@@ -188,7 +193,9 @@ lightbox/
 │  ├─ lb-app/         # Service layer: commands, queries, events, view-models. UI-agnostic.
 │  ├─ lb-ui/          # GPUI Kit views. Depends on lb-app only (+ gpui-kit).
 │  ├─ lb-cli/         # `lightbox-cli` headless commands over lb-app
-│  └─ lb-testkit/     # dev-only: fixtures, fakes, invariants, image compare (§12.2)
+│  ├─ lb-testkit/     # dev-only: fixtures, fakes, invariants, image compare (§12.2)
+│  ├─ lb-ipc/         # single-instance local-socket protocol (SPEC-VIEWER.md §V2.3)
+│  └─ lb-assoc/       # OS file-association plans + executors (SPEC-VIEWER.md §V10)
 ├─ apps/
 │  └─ lightbox/       # GUI binary: wires lb-app + lb-ui
 ├─ xtask/             # cargo xtask: ci, fixtures, goldens, perf, models
@@ -211,6 +218,7 @@ lb-app     → all of the above (features forwarded)
 lb-ui      → lb-app, lb-core, gpui-kit      (NOT lb-catalog, lb-imaging, …)
 lb-cli     → lb-app, lb-core
 apps/lightbox → lb-app, lb-ui
+lb-ipc, lb-assoc → lb-core only; lb-app → lb-ipc, lb-assoc (SPEC-VIEWER.md §V1.1)
 lb-testkit → anything; only ever a [dev-dependency]
 ```
 
@@ -936,6 +944,9 @@ Use GPUI Component: `TitleBar`, `Sidebar`, `Resizable` panels, `Input` (search),
 - **Timeline scrubber**: horizontal bar of months with density; dragging scrolls the grid to that date; shift-drag sets a date-range filter chip.
 
 ### 9.4 Viewer (F6)
+
+> **Superseded by `SPEC-VIEWER.md`** (overlay + standalone viewer, motion, backdrop, default-app registration). The text below describes the M8 viewer and is kept for history; where they differ, SPEC-VIEWER.md wins.
+
 - Opens over the library (same window, navigation stack). Fit to window by default; zoom (wheel, pinch, `+`/`-`, `1` = 100%), pan by drag, double-click toggles fit/100%.
 - Filmstrip at bottom (current view's ids), arrows to navigate, Home/End.
 - Info panel toggle (`I`): file, size, dimensions, date, camera, exposure, GPS (mini-map with `map`), tags, albums, people, caption editor.

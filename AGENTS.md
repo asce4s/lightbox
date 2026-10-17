@@ -5,7 +5,7 @@ You are building **Lightbox**, a Picasa-style photo manager in Rust with GPUI Ki
 Read in this order at the start of **every** session:
 1. `AGENTS.md` (this file) — how to work.
 2. `TASKS.md` — where you are. Find the first unchecked task. Read the Progress Log, Decisions, and Blockers.
-3. The `SPEC.md` sections referenced by that task.
+3. The `SPEC.md` sections referenced by that task. For M13 (photo viewer) tasks, `SPEC-VIEWER.md` is the spec; it supersedes SPEC.md §9.4.
 
 ---
 
