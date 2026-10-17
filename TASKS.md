@@ -9,8 +9,8 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 ## M0 — Scaffold (P0)
 
 - [x] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
-- [ ] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
-- [ ] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
+- [x] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
+- [x] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
 - [ ] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
 - [ ] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
 - [ ] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
@@ -124,6 +124,8 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 <!-- YYYY-MM-DD · task id · summary · tests added/changed -->
 
 2026-10-17 · M0.1 · Workspace with 16 crates + apps/lightbox + xtask stub, toolchain 1.99.1, workspace deps pinned exact, lints (unwrap/expect denied), `.cargo` xtask alias, Cargo.lock committed · no tests (scaffold); verified fmt, clippy -D warnings, test, doc, lb-app --no-default-features, and that `unwrap` in a lib is rejected by clippy
+2026-10-17 · M0.2 · `xtask` with `ci` (SPEC §13 steps 1–9, fail-fast, loud SKIPPED summary), stubs for fixtures/goldens/perf/models · tests `ci_plan_lists_spec_steps_in_order`, `ci_stops_at_first_failure`, `ci_reports_skipped_steps_loudly_but_stays_green`, `xtask_dispatches_all_subcommands`. Skipped for now: fixtures (until M0.5), cargo deny (until M0.7; fails instead of skipping when `CI` env is set)
+2026-10-17 · M0.3 · dependency-rule checker in `xtask/src/deps.rs` over `cargo metadata --no-deps`; also enforces rusqlite only in lb-catalog, gpui-kit only in lb-ui, no direct gpui/gpui-component, lb-testkit dev-only · tests `xtask_dependency_rules_detect_violation`, `_accept_valid_graph`, `_reject_unknown_workspace_crate`, `_reject_malformed_json`
 
 ## Decisions
 
@@ -132,6 +134,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - 2026-10-17 · toolchain · `rust-toolchain.toml` pins 1.99.1 (current stable) · edition 2024 needs >=1.85; sandbox shipped 1.83 so stable was installed via rustup.
 - 2026-10-17 · lb-app features · `default = [faces, video, map]`; P2 crates are optional deps forwarded by features; heavy impls (ONNX, ffmpeg) live behind further features inside those crates · SPEC §2 says P2 default-on but core tests pass with them off.
 - 2026-10-17 · lints · workspace `unwrap_used`/`expect_used` = deny, `clippy.toml` allows them in tests; `xtask` and `lb-testkit` opt out with a crate-level `allow` since they are tooling · SPEC says denied in library code only.
+- 2026-10-17 · gpui-kit scope · dependency checker allows `gpui-kit` only in `lb-ui`; `apps/lightbox` must reach GPUI through an `lb_ui` entry point (SPEC §4.2 lists lightbox → lb-app, lb-ui only) · keep §4.2 and §3.2 consistent.
 - 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
 
 ## Blockers
