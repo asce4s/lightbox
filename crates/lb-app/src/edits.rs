@@ -144,6 +144,23 @@ impl EditService {
         })
     }
 
+    /// Replaces the whole stack by `ops` after validating each, clearing the redo history. Does
+    /// nothing when the stack already equals the validated `ops`.
+    pub fn replace_stack(&self, id: PhotoId, ops: Vec<EditOp>) -> Result<EditStack> {
+        let ops = ops
+            .into_iter()
+            .map(|op| op.validate())
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        self.modify(id, |s| {
+            if s.stack.ops == ops {
+                return Ok(false);
+            }
+            s.stack.ops = ops;
+            s.redo.clear();
+            Ok(true)
+        })
+    }
+
     /// Commits a slider change: replaces the top op if it is the same kind of slider op,
     /// otherwise appends. Dragging a slider therefore produces a single undo step.
     pub fn adjust(&self, id: PhotoId, op: EditOp) -> Result<EditStack> {

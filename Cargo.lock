@@ -4198,7 +4198,9 @@ dependencies = [
 name = "lb-picasa"
 version = "0.1.0"
 dependencies = [
+ "insta",
  "lb-core",
+ "lb-testkit",
 ]
 
 [[package]]

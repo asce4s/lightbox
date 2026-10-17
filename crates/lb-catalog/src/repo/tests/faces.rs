@@ -151,3 +151,32 @@ fn renaming_to_an_existing_name_merges_and_bad_names_are_rejected() {
         Err(CatalogError::NotFound("face"))
     ));
 }
+
+#[test]
+fn picasa_faces_are_removed_without_touching_others() {
+    let (_d, c) = open();
+    let (_r, folder) = root_and_folder(&c);
+    let ids = insert_photos(&c, &folder, 1);
+    let rect = NormRect {
+        x: 0.2,
+        y: 0.2,
+        w: 0.2,
+        h: 0.2,
+    };
+    let ana = c.get_or_create_person("Ana").unwrap();
+    c.add_picasa_face(ids[0], rect, Some(ana.id)).unwrap();
+    c.add_picasa_face(ids[0], rect, None).unwrap();
+    c.add_manual_face(ids[0], rect, None).unwrap();
+    let faces = c.faces_of_photo(ids[0]).unwrap();
+    assert_eq!(
+        faces
+            .iter()
+            .filter(|f| f.source == FaceSource::Picasa)
+            .count(),
+        2
+    );
+    assert_eq!(c.remove_picasa_faces(ids[0]).unwrap(), 2);
+    let left = c.faces_of_photo(ids[0]).unwrap();
+    assert_eq!(left.len(), 1);
+    assert_eq!(left[0].source, FaceSource::Manual);
+}

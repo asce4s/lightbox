@@ -1,0 +1,162 @@
+---
+source: crates/lb-picasa/tests/parse.rs
+expression: ini
+---
+PicasaIni {
+    folder: FolderMeta {
+        name: Some(
+            "Picasa Folder",
+        ),
+        description: Some(
+            "Folder caption from Picasa",
+        ),
+    },
+    albums: [
+        AlbumDef {
+            token: "a1b2c3",
+            name: "Summer 2009",
+            date: Some(
+                "2009-08-01T10:00:00+02:00",
+            ),
+        },
+        AlbumDef {
+            token: "d4e5f6",
+            name: "Family",
+            date: Some(
+                "2010-01-15T08:30:00+00:00",
+            ),
+        },
+    ],
+    contacts: {
+        "4f3e2d1c": "Ana",
+    },
+    files: [
+        FileEntry {
+            name: "IMG_0001.JPG",
+            star: true,
+            caption: Some(
+                "At the beach",
+            ),
+            albums: [
+                "a1b2c3",
+                "d4e5f6",
+            ],
+            keywords: [
+                "beach",
+                "family",
+            ],
+            ops: [
+                RotateQuarter {
+                    turns: 1,
+                },
+                Crop {
+                    x: 0.18997483,
+                    y: 0.27267873,
+                    w: 0.41048294,
+                    h: 0.5855192,
+                },
+                FeelingLucky,
+                AutoContrast,
+                AutoColor,
+                Tuning {
+                    fill_light: 0.0,
+                    highlights: 0.0,
+                    shadows: 0.19,
+                    temperature: 0.0,
+                    neutral: Some(
+                        [
+                            0.96862745,
+                            0.9607843,
+                            0.9529412,
+                        ],
+                    ),
+                },
+            ],
+            skipped_filters: [],
+            faces: [
+                FaceRef {
+                    rect: NormRect {
+                        x: 0.2481117,
+                        y: 0.35857177,
+                        w: 0.10054171,
+                        h: 0.16107422,
+                    },
+                    person: Some(
+                        "Ana",
+                    ),
+                },
+                FaceRef {
+                    rect: NormRect {
+                        x: 0.6198978,
+                        y: 0.3692836,
+                        w: 0.093812466,
+                        h: 0.14929429,
+                    },
+                    person: None,
+                },
+            ],
+        },
+        FileEntry {
+            name: "IMG_0002.JPG",
+            star: false,
+            caption: None,
+            albums: [],
+            keywords: [],
+            ops: [
+                BlackAndWhite,
+                Sepia,
+                Warmify,
+                Saturation {
+                    amount: 0.5,
+                },
+                FillLight {
+                    amount: 0.3,
+                },
+                SoftFocus {
+                    cx: 0.5,
+                    cy: 0.5,
+                    radius: 0.4,
+                    amount: 0.5,
+                },
+                Glow {
+                    intensity: 0.5,
+                    radius: 0.5,
+                },
+                FocalBlackAndWhite {
+                    cx: 0.5,
+                    cy: 0.5,
+                    radius: 0.35,
+                    sharpness: 0.5,
+                },
+            ],
+            skipped_filters: [
+                "madeupfilter",
+            ],
+            faces: [],
+        },
+        FileEntry {
+            name: "IMG_0003.JPG",
+            star: false,
+            caption: Some(
+                "Line one\nLine two",
+            ),
+            albums: [],
+            keywords: [
+                "city",
+            ],
+            ops: [],
+            skipped_filters: [],
+            faces: [],
+        },
+        FileEntry {
+            name: "IMG_0004.JPG",
+            star: true,
+            caption: None,
+            albums: [],
+            keywords: [],
+            ops: [],
+            skipped_filters: [],
+            faces: [],
+        },
+    ],
+}

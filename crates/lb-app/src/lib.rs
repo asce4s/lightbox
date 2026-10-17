@@ -22,6 +22,7 @@ mod lightbox;
 mod map;
 mod paths;
 mod photos;
+mod picasa;
 mod query;
 mod rename;
 mod search;
@@ -67,6 +68,7 @@ pub use map::{ATTRIBUTION, CLUSTER_CELL_PX, MAX_ZOOM, MIN_ZOOM, MapService};
 pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};
 pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};
+pub use picasa::{PicasaImportService, PicasaOptions, PicasaReport};
 pub use query::ViewSource;
 pub use rename::{RenamePreview, RenameReport, expand_rename_pattern};
 pub use search::{

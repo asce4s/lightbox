@@ -296,6 +296,50 @@ impl Catalog {
         })
     }
 
+    /// Adds a face imported from a `.picasa.ini`, optionally belonging to `person`.
+    pub fn add_picasa_face(
+        &self,
+        photo: PhotoId,
+        rect: NormRect,
+        person: Option<PersonId>,
+    ) -> Result<FaceId> {
+        self.write_tx(move |tx| {
+            if let Some(p) = person
+                && !person_exists(tx, p)?
+            {
+                return Err(CatalogError::NotFound("person"));
+            }
+            let id = insert_face(
+                tx,
+                &NewFace {
+                    photo_id: photo,
+                    rect,
+                    score: 1.0,
+                    embedding: None,
+                    cluster_id: None,
+                    person_id: person,
+                    source: FaceSource::Picasa,
+                },
+            )?;
+            crate::fts::refresh_photos(tx, &[photo])?;
+            Ok(id)
+        })
+    }
+
+    /// Deletes the faces of `photo` that were imported from a `.picasa.ini`.
+    pub fn remove_picasa_faces(&self, photo: PhotoId) -> Result<usize> {
+        self.write_tx(move |tx| {
+            let n = tx.execute(
+                "DELETE FROM faces WHERE photo_id = ?1 AND source = 'picasa'",
+                [photo.get()],
+            )?;
+            if n > 0 {
+                crate::fts::refresh_photos(tx, &[photo])?;
+            }
+            Ok(n)
+        })
+    }
+
     /// Faces in `photo`, left to right.
     pub fn faces_of_photo(&self, photo: PhotoId) -> Result<Vec<Face>> {
         self.read(|c| {
