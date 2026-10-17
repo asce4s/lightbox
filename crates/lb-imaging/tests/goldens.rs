@@ -58,3 +58,58 @@ fn golden_rotate_quarter_cw_portrait() {
         &EditOp::RotateQuarter { turns: 1 },
     );
 }
+
+const LOW_CONTRAST: &str = "low_contrast";
+const PORTRAIT: &str = "portrait";
+
+fn fixture(name: &str) -> Rgba32FImage {
+    match name {
+        LOW_CONTRAST => common::low_contrast_400(),
+        _ => common::portrait_patches_640x480(),
+    }
+}
+
+fn auto_goldens(op_name: &str, op: &EditOp) {
+    for fixture_name in [LOW_CONTRAST, PORTRAIT] {
+        golden(
+            "auto",
+            &format!("golden_{op_name}_{fixture_name}"),
+            fixture(fixture_name),
+            op,
+        );
+    }
+}
+
+#[test]
+fn golden_auto_contrast() {
+    auto_goldens("auto_contrast", &EditOp::AutoContrast);
+}
+
+#[test]
+fn golden_auto_color() {
+    auto_goldens("auto_color", &EditOp::AutoColor);
+}
+
+#[test]
+fn golden_feeling_lucky() {
+    auto_goldens("feeling_lucky", &EditOp::FeelingLucky);
+}
+
+#[test]
+fn golden_fill_light() {
+    auto_goldens("fill_light", &EditOp::FillLight { amount: 0.6 });
+}
+
+#[test]
+fn golden_tuning() {
+    auto_goldens(
+        "tuning",
+        &EditOp::Tuning {
+            fill_light: 0.3,
+            highlights: 0.4,
+            shadows: 0.2,
+            temperature: 0.35,
+            neutral: Some([0.62, 0.55, 0.47]),
+        },
+    );
+}
