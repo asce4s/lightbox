@@ -40,11 +40,11 @@ pub(crate) struct Inner {
     pub(crate) jobs: JobQueue,
     pub(crate) bus: EventBus,
     pub(crate) clock: Arc<dyn Clock>,
-    #[allow(dead_code)]
     pub(crate) thumbs: ThumbCache,
     pub(crate) folders: FolderManager,
     pub(crate) history: HistoryService,
     pub(crate) scan_cancel: AtomicBool,
+    pub(crate) edit_lock: Mutex<()>,
     pub(crate) watcher: Mutex<Option<WatchService>>,
 }
 
@@ -111,6 +111,7 @@ impl Lightbox {
                 folders: FolderManager::new(scanner),
                 history,
                 scan_cancel: AtomicBool::new(false),
+                edit_lock: Mutex::new(()),
                 watcher: Mutex::new(None),
             }),
         })

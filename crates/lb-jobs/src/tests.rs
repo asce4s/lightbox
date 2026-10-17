@@ -395,3 +395,49 @@ fn dropping_the_queue_cancels_pending_jobs_and_joins_workers() {
         "either ran before shutdown or was cancelled: {result:?}"
     );
 }
+
+struct HoldsQueue {
+    _queue: JobQueue,
+    started: mpsc::Sender<()>,
+    release: mpsc::Receiver<()>,
+}
+
+impl Job for HoldsQueue {
+    fn kind(&self) -> &'static str {
+        "holds-queue"
+    }
+    fn run(self: Box<Self>, _: &JobCtx) -> JobResult {
+        let _ = self.started.send(());
+        let _ = self.release.recv_timeout(T);
+        Ok(())
+    }
+}
+
+#[test]
+fn last_queue_handle_dropped_on_a_worker_cancels_pending_jobs() {
+    let queue = JobQueue::threaded(1);
+    let (started_tx, started_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let first = queue.submit(
+        HoldsQueue {
+            _queue: queue.clone(),
+            started: started_tx,
+            release: release_rx,
+        },
+        Priority::Foreground,
+    );
+    started_rx.recv_timeout(T).unwrap();
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let second = queue.submit(
+        Record {
+            name: "never",
+            log: log.clone(),
+        },
+        Priority::Background,
+    );
+    drop(queue);
+    release_tx.send(()).unwrap();
+    assert_eq!(first.wait(T), Some(Ok(())));
+    assert_eq!(second.wait(T), Some(Err(JobError::Cancelled)));
+    assert!(log.lock().is_empty());
+}

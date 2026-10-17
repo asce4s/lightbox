@@ -119,8 +119,12 @@ impl Drop for WorkerGuard {
             }
         }
         self.inner.work.notify_all();
+        let me = std::thread::current().id();
         for t in self.threads.lock().drain(..) {
-            let _ = t.join();
+            // A job may hold the last handle to the queue; joining ourselves would deadlock.
+            if t.thread().id() != me {
+                let _ = t.join();
+            }
         }
     }
 }

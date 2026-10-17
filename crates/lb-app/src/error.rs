@@ -17,6 +17,12 @@ pub enum AppError {
     /// An edit operation was rejected.
     #[error(transparent)]
     Edit(#[from] EditError),
+    /// Decoding or reading an image failed.
+    #[error(transparent)]
+    Media(#[from] lb_media::MediaError),
+    /// The operation was cancelled before it finished.
+    #[error("cancelled")]
+    Cancelled,
     /// A file-system operation failed.
     #[error("i/o error: {0}")]
     Io(#[from] std::io::Error),

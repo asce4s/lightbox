@@ -28,6 +28,7 @@ lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
 chrono = { workspace = true }
+image = { workspace = true, features = ["jpeg", "png"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }
 indexmap = { workspace = true }
@@ -40,4 +41,3 @@ tracing = { workspace = true }
 [dev-dependencies]
 lb-testkit = { path = "../lb-testkit" }
 tempfile = { workspace = true }
-image = { workspace = true, features = ["jpeg", "png"] }
