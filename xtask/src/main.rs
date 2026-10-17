@@ -1,13 +1,14 @@
-//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|models>`.
+//! Developer automation: `cargo xtask <ci|fixtures|goldens|perf|coverage|models>`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod ci;
+mod coverage;
 mod deps;
 mod models;
 
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|models>";
+const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|coverage|models>";
 
 /// Result of dispatching a subcommand.
 #[derive(Debug, PartialEq, Eq)]
@@ -17,6 +18,7 @@ enum Dispatch {
     Goldens { update: Option<String> },
     Models { dir: Option<String> },
     Perf { benches: bool },
+    Coverage { from_json: Option<String> },
     Usage(String),
 }
 
@@ -42,6 +44,20 @@ fn dispatch(args: &[String]) -> Dispatch {
             None => Dispatch::Perf { benches: false },
             Some("--bench") => Dispatch::Perf { benches: true },
             Some(_) => Dispatch::Usage("usage: cargo xtask perf [--bench]".to_owned()),
+        },
+        Some("coverage") => match args.get(1).map(String::as_str) {
+            None => Dispatch::Coverage { from_json: None },
+            Some("--from-json") => match args.get(2) {
+                Some(path) => Dispatch::Coverage {
+                    from_json: Some(path.clone()),
+                },
+                None => {
+                    Dispatch::Usage("usage: cargo xtask coverage [--from-json <path>]".to_owned())
+                }
+            },
+            Some(_) => {
+                Dispatch::Usage("usage: cargo xtask coverage [--from-json <path>]".to_owned())
+            }
         },
         Some("models") => match args.get(1).map(String::as_str) {
             None => Dispatch::Models { dir: None },
@@ -87,6 +103,13 @@ fn main() -> ExitCode {
             }
         },
         Dispatch::Perf { benches } => perf(benches),
+        Dispatch::Coverage { from_json } => match coverage::run(from_json.as_deref()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("{e:#}");
+                ExitCode::FAILURE
+            }
+        },
         Dispatch::Usage(msg) => {
             eprintln!("{msg}");
             ExitCode::from(2)
@@ -175,6 +198,17 @@ mod tests {
         assert_eq!(d(&["perf"]), Dispatch::Perf { benches: false });
         assert_eq!(d(&["perf", "--bench"]), Dispatch::Perf { benches: true });
         assert!(matches!(d(&["perf", "x"]), Dispatch::Usage(_)));
+        assert_eq!(d(&["coverage"]), Dispatch::Coverage { from_json: None });
+        assert_eq!(
+            d(&["coverage", "--from-json", "c.json"]),
+            Dispatch::Coverage {
+                from_json: Some("c.json".into())
+            }
+        );
+        assert!(matches!(
+            d(&["coverage", "--from-json"]),
+            Dispatch::Usage(_)
+        ));
         assert_eq!(d(&["models"]), Dispatch::Models { dir: None });
         assert_eq!(
             d(&["models", "--dir", "/m"]),
