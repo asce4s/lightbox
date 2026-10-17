@@ -63,6 +63,8 @@ enum Command {
     Render(RenderArgs),
     /// Export photos to a folder.
     Export(ExportArgs),
+    /// Find exact and similar photos.
+    Dupes(DupesArgs),
     /// Thumbnail cache maintenance.
     Thumbs {
         #[command(subcommand)]
@@ -209,6 +211,13 @@ struct ExportArgs {
     /// Drop GPS data from the exported EXIF.
     #[arg(long)]
     strip_gps: bool,
+}
+
+#[derive(Debug, Args)]
+struct DupesArgs {
+    /// Largest perceptual-hash distance (in bits, 0 to 64) that still counts as similar.
+    #[arg(long, default_value_t = lb_app::DEFAULT_SIMILARITY)]
+    threshold: u32,
 }
 
 #[derive(Debug, Subcommand)]
@@ -360,6 +369,7 @@ pub fn run(cli: Cli) -> CliResult {
         Command::Edit { action } => edit(&lb, action),
         Command::Render(a) => render(&lb, &a),
         Command::Export(a) => export(&lb, &a),
+        Command::Dupes(a) => dupes(&lb, &a),
         Command::Thumbs { action } => {
             let ThumbsCmd::Warm { size } = action;
             thumbs_warm(&lb, &size)
@@ -561,6 +571,42 @@ fn render(lb: &Lightbox, a: &RenderArgs) -> CliResult {
             img.width(),
             img.height()
         ),
+    )
+}
+
+fn dupes(lb: &Lightbox, a: &DupesArgs) -> CliResult {
+    if a.threshold > 64 {
+        return Err(user("threshold must be between 0 and 64"));
+    }
+    let groups = lb.duplicates().find(a.threshold)?;
+    let json_groups: Vec<Value> = groups
+        .iter()
+        .map(|g| {
+            json!({
+                "exact": g.exact,
+                "ids": g.ids.iter().map(|i| i.get()).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let text = if groups.is_empty() {
+        "no duplicates found".to_owned()
+    } else {
+        groups
+            .iter()
+            .map(|g| {
+                let ids: Vec<String> = g.ids.iter().map(ToString::to_string).collect();
+                format!(
+                    "{}\t{}",
+                    if g.exact { "exact" } else { "similar" },
+                    ids.join(" ")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    out(
+        json!({ "threshold": a.threshold, "groups": json_groups }),
+        text,
     )
 }
 

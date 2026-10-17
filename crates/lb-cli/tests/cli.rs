@@ -391,3 +391,43 @@ fn cli_exit_codes() {
         .failure();
     env.cmd(&["roots", "list"]).assert().code(0);
 }
+
+#[test]
+fn cli_dupes_e2e() {
+    let env = Env::empty();
+    let blocks = |seed: u32| {
+        image::RgbImage::from_fn(160, 120, |x, y| {
+            let cell = (y * 6 / 120) * 8 + x * 8 / 160;
+            let v = (cell.wrapping_add(seed).wrapping_mul(2_654_435_761) >> 13) as u8;
+            image::Rgb([v, v, v])
+        })
+    };
+    blocks(1).save(env.photos.path().join("a.jpg")).unwrap();
+    blocks(99).save(env.photos.path().join("b.jpg")).unwrap();
+    std::fs::copy(
+        env.photos.path().join("a.jpg"),
+        env.photos.path().join("a_copy.jpg"),
+    )
+    .unwrap();
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+
+    let r = env.json(&["dupes"]);
+    let groups = r["groups"].as_array().unwrap();
+    assert_eq!(groups.len(), 1, "{r}");
+    assert_eq!(groups[0]["exact"], true);
+    assert_eq!(groups[0]["ids"].as_array().unwrap().len(), 2);
+    let all = env.all();
+    assert_eq!(all.len(), 3);
+    assert!(
+        !groups[0]["ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| { i.as_i64() == Some(all[2]) }),
+        "b.jpg is not a duplicate"
+    );
+
+    let text = env.cmd(&["dupes", "--threshold", "0"]).assert().success();
+    assert!(String::from_utf8_lossy(&text.get_output().stdout).starts_with("exact"));
+    env.cmd(&["dupes", "--threshold", "99"]).assert().code(1);
+}

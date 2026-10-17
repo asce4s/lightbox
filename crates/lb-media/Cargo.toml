@@ -22,3 +22,4 @@ fast_image_resize = { workspace = true, features = ["image"] }
 [dev-dependencies]
 lb-testkit = { path = "../lb-testkit" }
 tempfile = { workspace = true }
+proptest = { workspace = true }
