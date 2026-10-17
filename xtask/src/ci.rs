@@ -235,7 +235,13 @@ impl Executor for RealExecutor {
             Action::DepRules => {
                 Self::dep_rules().unwrap_or_else(|e| Outcome::Failed(format!("{e:#}")))
             }
-            Action::Fixtures => Outcome::Skipped("fixture generator arrives in M0.5".into()),
+            Action::Fixtures => match lb_testkit::fixtures::generate_default() {
+                Ok(dir) => {
+                    println!("fixtures generated in {}", dir.display());
+                    Outcome::Passed
+                }
+                Err(e) => Outcome::Failed(format!("{e:#}")),
+            },
             Action::Deny => Self::deny(),
         }
     }
@@ -319,7 +325,7 @@ mod tests {
     fn ci_reports_skipped_steps_loudly_but_stays_green() {
         let mut fake = Fake {
             fail_at: None,
-            skip_at: Some(4),
+            skip_at: Some(5),
             ran: Vec::new(),
         };
         let results = run_plan(&plan(), &mut fake);

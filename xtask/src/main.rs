@@ -12,6 +12,7 @@ const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|models>";
 #[derive(Debug, PartialEq, Eq)]
 enum Dispatch {
     Ci,
+    Fixtures,
     Stub(&'static str, &'static str),
     Usage(String),
 }
@@ -19,7 +20,7 @@ enum Dispatch {
 fn dispatch(args: &[String]) -> Dispatch {
     match args.first().map(String::as_str) {
         Some("ci") => Dispatch::Ci,
-        Some("fixtures") => Dispatch::Stub("fixtures", "M0.5"),
+        Some("fixtures") => Dispatch::Fixtures,
         Some("goldens") => Dispatch::Stub("goldens", "M5.3"),
         Some("perf") => Dispatch::Stub("perf", "M11.1"),
         Some("models") => Dispatch::Stub("models", "M10.3"),
@@ -38,6 +39,16 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         }
+        Dispatch::Fixtures => match lb_testkit::fixtures::generate_default() {
+            Ok(dir) => {
+                println!("fixtures generated in {}", dir.display());
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("fixture generation failed: {e:#}");
+                ExitCode::FAILURE
+            }
+        },
         Dispatch::Stub(name, task) => {
             println!("`xtask {name}` is not implemented yet (planned in {task})");
             ExitCode::SUCCESS
@@ -60,7 +71,8 @@ mod tests {
     #[test]
     fn xtask_dispatches_all_subcommands() {
         assert_eq!(d(&["ci"]), Dispatch::Ci);
-        for name in ["fixtures", "goldens", "perf", "models"] {
+        assert_eq!(d(&["fixtures"]), Dispatch::Fixtures);
+        for name in ["goldens", "perf", "models"] {
             assert!(matches!(d(&[name]), Dispatch::Stub(n, _) if n == name));
         }
         assert!(matches!(d(&[]), Dispatch::Usage(_)));

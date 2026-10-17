@@ -9,7 +9,13 @@ publish = false
 workspace = true
 
 [dependencies]
-image = { workspace = true, features = ["png"] }
+anyhow = { workspace = true }
+image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }
+serde = { workspace = true }
+toml = { workspace = true }
 parking_lot = { workspace = true }
 tempfile = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+kamadak-exif = { workspace = true }

@@ -1,0 +1,563 @@
+# Fixture manifest (SPEC §12.3). Paths are relative to tests/fixtures/generated/.
+# `expect.width/height` are post-EXIF-orientation. `taken_at_src = "mtime"` means no `taken_at`: compare with file mtime.
+
+version = 1
+mtime_unix = 1577836800
+
+[[file]]
+path = "basic/2021/beach/beach_01.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 101
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 100
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-01T12:00:00"
+offset = "+01:00"
+orientation = 1
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-01T12:00:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2021/beach/beach_02.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 102
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 200
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-02T12:00:00"
+offset = "+01:00"
+orientation = 1
+gps = [38.7223, -9.1393]
+altitude = 12.5
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-02T12:00:00"
+taken_at_src = "exif"
+gps = [38.7223, -9.1393]
+
+[[file]]
+path = "basic/2021/beach/beach_03.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 103
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 300
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-03T12:00:00"
+offset = "+01:00"
+orientation = 1
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-03T12:00:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2021/beach/beach_04.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 104
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 400
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-04T12:00:00"
+offset = "+01:00"
+orientation = 1
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-04T12:00:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2021/beach/beach_05.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 105
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 500
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-05T12:00:00"
+offset = "+01:00"
+orientation = 1
+gps = [41.1579, -8.6291]
+altitude = 12.5
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-05T12:00:00"
+taken_at_src = "exif"
+gps = [41.1579, -8.6291]
+
+[[file]]
+path = "basic/2021/beach/beach_06.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 106
+quality = 90
+[file.exif]
+make = "Canon"
+model = "Canon EOS R6"
+lens = "RF24-105mm F4 L IS USM"
+iso = 600
+f_number = 4.0
+exposure = "1/250"
+focal_mm = 50.0
+taken = "2021-07-06T12:00:00"
+offset = "+01:00"
+orientation = 1
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-06T12:00:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2022/city/city_01_o1.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 201
+quality = 90
+[file.exif]
+make = "Google"
+model = "Pixel 7"
+taken = "2022-03-11T09:30:00"
+orientation = 1
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2022-03-11T09:30:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2022/city/city_02_o3.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 202
+quality = 90
+[file.exif]
+make = "Google"
+model = "Pixel 7"
+taken = "2022-03-12T09:30:00"
+orientation = 3
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2022-03-12T09:30:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2022/city/city_03_o6.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 203
+quality = 90
+[file.exif]
+make = "Google"
+model = "Pixel 7"
+taken = "2022-03-13T09:30:00"
+orientation = 6
+[file.expect]
+status = "ok"
+width = 480
+height = 640
+taken_at = "2022-03-13T09:30:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2022/city/city_04_o8.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 204
+quality = 90
+[file.exif]
+make = "Google"
+model = "Pixel 7"
+taken = "2022-03-14T09:30:00"
+orientation = 8
+[file.expect]
+status = "ok"
+width = 480
+height = 640
+taken_at = "2022-03-14T09:30:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/2022/city/IMG_20220315_101500.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 205
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2022-03-15T10:15:00"
+taken_at_src = "filename"
+
+[[file]]
+path = "basic/2022/city/PXL_20220316_101500123.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 206
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2022-03-16T10:15:00"
+taken_at_src = "filename"
+
+[[file]]
+path = "basic/misc/sample.png"
+kind = "png"
+pattern = "scene"
+width = 320
+height = 240
+seed = 301
+[file.expect]
+status = "ok"
+width = 320
+height = 240
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/animated.gif"
+kind = "gif"
+pattern = "scene"
+width = 64
+height = 48
+seed = 302
+frames = 3
+[file.expect]
+status = "ok"
+width = 64
+height = 48
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/sample.webp"
+kind = "webp"
+pattern = "scene"
+width = 160
+height = 120
+seed = 303
+[file.expect]
+status = "ok"
+width = 160
+height = 120
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/sample.bmp"
+kind = "bmp"
+pattern = "scene"
+width = 160
+height = 120
+seed = 304
+[file.expect]
+status = "ok"
+width = 160
+height = 120
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/sample.tiff"
+kind = "tiff"
+pattern = "scene"
+width = 160
+height = 120
+seed = 305
+[file.expect]
+status = "ok"
+width = 160
+height = 120
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/large_6000x4000.jpg"
+kind = "jpeg"
+pattern = "gradient"
+width = 6000
+height = 4000
+seed = 306
+quality = 80
+[file.expect]
+status = "ok"
+width = 6000
+height = 4000
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/tiny_1x1.png"
+kind = "png"
+pattern = "gradient"
+width = 1
+height = 1
+seed = 307
+[file.expect]
+status = "ok"
+width = 1
+height = 1
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/café ☕ 写真.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 320
+height = 240
+seed = 308
+quality = 85
+[file.expect]
+status = "ok"
+width = 320
+height = 240
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/misc/zero_byte.jpg"
+kind = "zero_byte"
+[file.expect]
+status = "unreadable"
+
+[[file]]
+path = "basic/misc/truncated.jpg"
+kind = "truncated_jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 309
+quality = 90
+[file.expect]
+status = "unreadable"
+
+[[file]]
+path = "basic/misc/not_an_image.jpg"
+kind = "text"
+contents = """
+This is plain text pretending to be a JPEG.
+"""
+[file.expect]
+status = "unreadable"
+
+[[file]]
+path = "basic/dupes/beach_01_copy.jpg"
+kind = "copy"
+of = "basic/2021/beach/beach_01.jpg"
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at = "2021-07-01T12:00:00"
+taken_at_src = "exif"
+
+[[file]]
+path = "basic/dupes/beach_01_half.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 320
+height = 240
+seed = 101
+quality = 90
+[file.expect]
+status = "ok"
+width = 320
+height = 240
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/dupes/beach_01_q60.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 101
+quality = 60
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/.hidden/hidden.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 160
+height = 120
+seed = 401
+quality = 85
+[file.expect]
+status = "ignored"
+
+[[file]]
+path = "basic/@eaDir/synology_thumb.jpg"
+kind = "jpeg"
+pattern = "scene"
+width = 160
+height = 120
+seed = 402
+quality = 85
+[file.expect]
+status = "ignored"
+
+[[file]]
+path = "basic/picasa/IMG_0001.JPG"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 501
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/picasa/IMG_0002.JPG"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 502
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/picasa/IMG_0003.JPG"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 503
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/picasa/IMG_0004.JPG"
+kind = "jpeg"
+pattern = "scene"
+width = 640
+height = 480
+seed = 504
+quality = 90
+[file.expect]
+status = "ok"
+width = 640
+height = 480
+taken_at_src = "mtime"
+
+[[file]]
+path = "basic/picasa/.picasa.ini"
+kind = "text"
+contents = """
+[Picasa]
+name=Picasa Folder
+description=Folder caption from Picasa
+[.album:a1b2c3]
+name=Summer 2009
+token=a1b2c3
+date=2009-08-01T10:00:00+02:00
+[.album:d4e5f6]
+name=Family
+token=d4e5f6
+date=2010-01-15T08:30:00+00:00
+[Contacts2]
+4f3e2d1c=Ana;;
+[IMG_0001.JPG]
+star=yes
+caption=At the beach
+rotate=rotate(1)
+albums=a1b2c3,d4e5f6
+keywords=beach,family
+filters=crop64=1,30a245ce99b7dbb2;enhance=1;autolight=1;autocolor=1;finetune2=1,0.000000,0.000000,0.190000,fff7f5f3,0.000000;
+faces=rect64(3f845bcb59418507),4f3e2d1c;rect64(9eb15e89b6b584c1),ffffffffffffffff
+[IMG_0002.JPG]
+filters=bw=1;sepia=1;warm=1;sat=1,0.500000;fill=1,0.300000;radblur=1,0.5,0.5,0.4,0.5;glow2=1,0.5,0.5;ansel=1;madeupfilter=1,2,3;
+[IMG_0003.JPG]
+caption=Line one\\nLine two
+keywords=city
+[IMG_0004.JPG]
+star=yes
+"""
+[file.expect]
+status = "ignored"

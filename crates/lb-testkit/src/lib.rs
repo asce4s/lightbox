@@ -1,6 +1,7 @@
 //! Test support: fixtures, fakes, invariants and image comparison. Dev-dependency only.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+pub mod fixtures;
 mod home;
 mod image_cmp;
 mod wait;
