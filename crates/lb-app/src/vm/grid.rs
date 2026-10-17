@@ -1,0 +1,129 @@
+//! Row layout of the virtualized grid (SPEC §9.3).
+
+use crate::search::Group;
+use std::ops::Range;
+
+/// Height of a group header row in pixels.
+pub const HEADER_HEIGHT: f32 = 36.0;
+/// Space between cells and rows in pixels.
+pub const GAP: f32 = 8.0;
+/// Smallest and largest cell size of the zoom slider.
+pub const ZOOM_RANGE: (u32, u32) = (96, 320);
+
+/// One row of the grid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridRow {
+    /// The header of group `group`.
+    Header {
+        /// Index into the result's groups.
+        group: usize,
+    },
+    /// A run of cells of one group.
+    Cells {
+        /// Index into the result's groups.
+        group: usize,
+        /// Index of the first cell within the group.
+        start: usize,
+        /// Number of cells in the row.
+        len: usize,
+    },
+}
+
+/// Rows and their vertical positions for a given width and cell size.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GridLayout {
+    /// Rows in display order.
+    pub rows: Vec<GridRow>,
+    /// Cells per row.
+    pub columns: usize,
+    /// Cell edge in pixels.
+    pub cell: f32,
+    tops: Vec<f32>,
+    height: f32,
+}
+
+/// Cells per row for a viewport `width` wide.
+pub fn columns_for(width: f32, cell: u32) -> usize {
+    let cell = cell as f32;
+    (((width + GAP) / (cell + GAP)).floor() as usize).max(1)
+}
+
+impl GridLayout {
+    /// Lays out `groups`: a header row per non-empty group, then rows of `columns` cells.
+    pub fn build(groups: &[Group], columns: usize, cell: f32) -> Self {
+        let columns = columns.max(1);
+        let mut rows = Vec::new();
+        for (g, group) in groups.iter().enumerate() {
+            if group.ids.is_empty() {
+                continue;
+            }
+            rows.push(GridRow::Header { group: g });
+            let mut start = 0;
+            while start < group.ids.len() {
+                let len = columns.min(group.ids.len() - start);
+                rows.push(GridRow::Cells {
+                    group: g,
+                    start,
+                    len,
+                });
+                start += len;
+            }
+        }
+        let mut layout = Self {
+            rows,
+            columns,
+            cell,
+            tops: Vec::new(),
+            height: 0.0,
+        };
+        let mut y = 0.0;
+        let mut tops = Vec::with_capacity(layout.rows.len());
+        for row in &layout.rows {
+            tops.push(y);
+            y += layout.height_of(row);
+        }
+        layout.tops = tops;
+        layout.height = y;
+        layout
+    }
+
+    fn height_of(&self, row: &GridRow) -> f32 {
+        match row {
+            GridRow::Header { .. } => HEADER_HEIGHT,
+            GridRow::Cells { .. } => self.cell + GAP,
+        }
+    }
+
+    /// Distance of row `i` from the top of the content.
+    pub fn row_top(&self, i: usize) -> f32 {
+        self.tops.get(i).copied().unwrap_or(self.height)
+    }
+
+    /// Height of row `i`.
+    pub fn row_height(&self, i: usize) -> f32 {
+        self.rows.get(i).map_or(0.0, |r| self.height_of(r))
+    }
+
+    /// Height of all rows.
+    pub fn total_height(&self) -> f32 {
+        self.height
+    }
+
+    /// Rows intersecting `[scroll_y, scroll_y + viewport_h]` extended by `overscan` pixels on
+    /// both sides.
+    pub fn visible_rows(&self, scroll_y: f32, viewport_h: f32, overscan: f32) -> Range<usize> {
+        let top = (scroll_y - overscan).max(0.0);
+        let bottom = scroll_y + viewport_h + overscan;
+        let first = self.tops.partition_point(|&t| t < top).saturating_sub(1);
+        let end = self.tops.partition_point(|&t| t < bottom);
+        first.min(self.rows.len())..end.min(self.rows.len())
+    }
+
+    /// The row holding cell `index` of `group`.
+    pub fn row_of(&self, group: usize, index: usize) -> Option<usize> {
+        self.rows.iter().position(|r| {
+            matches!(r, GridRow::Cells { group: g, start, len }
+                if *g == group && (*start..start + len).contains(&index))
+        })
+    }
+}

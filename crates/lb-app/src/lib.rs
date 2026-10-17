@@ -17,6 +17,7 @@ mod search;
 mod system;
 mod tags;
 mod thumbs;
+pub mod vm;
 
 pub use albums::AlbumService;
 pub use edits::EditService;
