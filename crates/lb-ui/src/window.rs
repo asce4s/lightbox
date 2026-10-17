@@ -110,6 +110,8 @@ pub struct LightboxWindow {
     pub(crate) slideshow_controls_shown: bool,
     last_anchor_row: Option<usize>,
     pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
+    pub(crate) band: Option<crate::band::BandDrag>,
+    pub(crate) grid_bounds: crate::band::GridBounds,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -185,6 +187,8 @@ impl LightboxWindow {
             slideshow_controls_shown: false,
             last_anchor_row: None,
             timeline_drag: None,
+            band: None,
+            grid_bounds: crate::band::GridBounds::default(),
             _subscriptions: subscriptions,
         };
         if ticker {

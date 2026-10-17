@@ -3,6 +3,7 @@
 
 pub mod ids;
 
+mod band;
 mod chrome;
 mod editor;
 mod hello;

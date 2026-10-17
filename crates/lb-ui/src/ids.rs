@@ -34,6 +34,7 @@ ids! {
     NEW_ALBUM_BUTTON = "new-album",
     GRID = "grid",
     GRID_EMPTY = "grid-empty",
+    GRID_BAND = "grid-band",
     INFO_PANEL = "info-panel",
     ZOOM_SLIDER = "zoom-slider",
     STATUS_BAR = "status-bar",

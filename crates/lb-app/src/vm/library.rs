@@ -71,6 +71,7 @@ pub struct LibraryVm {
     focused: Option<PhotoId>,
     tray: IndexSet<PhotoId>,
     scroll_anchor: Option<PhotoId>,
+    band_base: Option<Selection>,
     zoom: u32,
     viewport_width: f32,
     layout: GridLayout,
@@ -96,6 +97,7 @@ impl LibraryVm {
             focused: None,
             tray: IndexSet::new(),
             scroll_anchor: None,
+            band_base: None,
             zoom: settings.grid.thumb_size.zoom_px(),
             viewport_width: 1200.0,
             layout: GridLayout::default(),
@@ -451,6 +453,54 @@ impl LibraryVm {
         }
         self.focused = Some(id);
         self.scroll_anchor = Some(id);
+    }
+
+    /// Starts a rubber-band selection. With `additive` the current selection stays and the band
+    /// adds to it; otherwise the selection is emptied first.
+    pub fn begin_band(&mut self, additive: bool) {
+        if !additive {
+            self.selection = Selection::default();
+        }
+        self.band_base = Some(self.selection.clone());
+    }
+
+    /// Selects the cells touched by the band rectangle (content coordinates, see
+    /// [`GridLayout::cells_in_rect`]) on top of the selection `begin_band` started from.
+    pub fn update_band(&mut self, x0: f32, y0: f32, x1: f32, y1: f32) {
+        let Some(base) = self.band_base.clone() else {
+            return;
+        };
+        let mut selection = base;
+        let mut hits: Vec<(usize, usize)> = self.layout.cells_in_rect(x0, y0, x1, y1);
+        hits.sort_unstable();
+        let mut first = None;
+        for (group, index) in hits {
+            let Some(id) = self
+                .result
+                .groups
+                .get(group)
+                .and_then(|g| g.ids.get(index))
+                .copied()
+            else {
+                continue;
+            };
+            first.get_or_insert(id);
+            selection.ids.insert(id);
+        }
+        if selection.anchor.is_none() {
+            selection.anchor = first;
+        }
+        self.selection = selection;
+    }
+
+    /// Ends the rubber-band selection.
+    pub fn end_band(&mut self) {
+        self.band_base = None;
+    }
+
+    /// Whether a rubber-band selection is in progress.
+    pub fn band_active(&self) -> bool {
+        self.band_base.is_some()
     }
 
     /// Selects every photo in the view.
