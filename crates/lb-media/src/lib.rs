@@ -5,6 +5,7 @@ mod decode;
 mod error;
 mod extract;
 mod format;
+mod hash;
 mod metadata;
 mod probe;
 mod resize;
@@ -16,6 +17,7 @@ pub use extract::{ImageMetadata, extract_image, fallback_taken_at};
 pub use format::{
     Capabilities, format_for_extension, is_supported_extension, sniff_format, supported_extensions,
 };
+pub use hash::{QUICK_KEY_SAMPLE, content_hash, quick_key, quick_key_of_bytes};
 pub use metadata::{ExifData, read_exif};
 pub use probe::{Probe, probe};
 pub use resize::{fit_within, resize_exact};
