@@ -7,6 +7,7 @@ mod error;
 mod ids;
 mod library;
 mod photo;
+mod ports;
 mod query;
 
 pub use clock::{Clock, SystemClock};
@@ -20,4 +21,5 @@ pub use library::{
     normalize_tag_name,
 };
 pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
+pub use ports::{Opener, TrashBackend};
 pub use query::{GroupBy, Selection, SortOrder, SqlValue};

@@ -32,7 +32,7 @@ pub(crate) fn scan_event_to_app(event: ScanEvent) -> AppEvent {
 /// Manages roots and keeps the catalog in sync with the disk.
 #[derive(Clone)]
 pub struct LibraryService {
-    lb: Lightbox,
+    pub(crate) lb: Lightbox,
 }
 
 impl Lightbox {

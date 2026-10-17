@@ -28,6 +28,8 @@ lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
 chrono = { workspace = true }
+opener = { workspace = true }
+trash = { workspace = true }
 image = { workspace = true, features = ["jpeg", "png"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }

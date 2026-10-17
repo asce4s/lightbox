@@ -208,4 +208,58 @@ impl Catalog {
             Ok(())
         })
     }
+
+    /// Deletes photo rows (files on disk are untouched). Returns how many rows existed.
+    pub fn delete_photos(&self, ids: &[PhotoId]) -> Result<usize> {
+        let ids = ids.to_vec();
+        self.write_tx(move |tx| {
+            let mut stmt = tx.prepare_cached("DELETE FROM photos WHERE id = ?1")?;
+            let mut deleted = 0;
+            for id in &ids {
+                deleted += stmt.execute([id.get()])?;
+            }
+            Ok(deleted)
+        })
+    }
+
+    /// Renames the folder at `old` to `new` and rewrites the paths of every folder below it in
+    /// one transaction; the search index is refreshed for all photos in the subtree. Returns
+    /// those photos.
+    pub fn rename_folder_tree(&self, old: &Path, new: &Path) -> Result<Vec<PhotoId>> {
+        let (old_exact, old_len, old_prefix) = subtree(old)?;
+        let new_exact = path_str(new)?.to_owned();
+        let new_name = super::folders::folder_name(new);
+        self.write_tx(move |tx| {
+            let ids = {
+                let mut stmt = tx.prepare(
+                    "SELECT p.id FROM photos p JOIN folders f ON f.id = p.folder_id
+                     WHERE f.path = ?1 OR substr(f.path, 1, ?2) = ?3 ORDER BY p.id",
+                )?;
+                stmt.query_map((&old_exact, old_len, &old_prefix), |r| {
+                    Ok(PhotoId::new(r.get(0)?))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?
+            };
+            let changed = tx.execute(
+                "UPDATE folders SET path = ?1 || substr(path, ?2 + 1)
+                 WHERE path = ?3 OR substr(path, 1, ?4) = ?5",
+                (
+                    &new_exact,
+                    i64::try_from(old_exact.chars().count()).unwrap_or(i64::MAX),
+                    &old_exact,
+                    old_len,
+                    &old_prefix,
+                ),
+            )?;
+            if changed == 0 {
+                return Err(crate::CatalogError::NotFound("folder"));
+            }
+            tx.execute(
+                "UPDATE folders SET name = ?1 WHERE path = ?2",
+                (&new_name, &new_exact),
+            )?;
+            crate::fts::refresh_photos(tx, &ids)?;
+            Ok(ids)
+        })
+    }
 }

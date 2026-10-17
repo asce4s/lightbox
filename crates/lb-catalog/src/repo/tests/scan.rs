@@ -147,3 +147,78 @@ fn sort_date_is_earliest_taken_at() {
     let f = catalog.get_folder(folder.id).unwrap().unwrap();
     assert_eq!(f.sort_date, a.taken_at);
 }
+
+#[test]
+fn delete_photos_removes_rows_and_index_entries() {
+    let (_dir, catalog) = open();
+    let (_, folder) = root_and_folder(&catalog);
+    let ids = insert_photos(&catalog, &folder, 3);
+    assert_eq!(catalog.delete_photos(&[ids[0], ids[2], ids[2]]).unwrap(), 2);
+    assert_eq!(catalog.all_photo_ids().unwrap(), vec![ids[1]]);
+    assert_eq!(catalog.delete_photos(&ids[..1]).unwrap(), 0);
+}
+
+#[test]
+fn rename_folder_tree_rewrites_descendants_and_index() {
+    let (_dir, catalog) = open();
+    let root = catalog
+        .add_root(Path::new("/photos"), RootMode::Watch, now())
+        .unwrap();
+    let mk = |path: &str| {
+        catalog
+            .ensure_folder(NewFolder {
+                root_id: root.id,
+                path: path.into(),
+                parent_id: None,
+            })
+            .unwrap()
+    };
+    let (a, deep, ab) = (mk("/photos/a"), mk("/photos/a/deep"), mk("/photos/ab"));
+    let outcome = catalog
+        .upsert_photos(
+            vec![
+                upsert(&a, "x.jpg"),
+                upsert(&deep, "y.jpg"),
+                upsert(&ab, "z.jpg"),
+            ],
+            now(),
+        )
+        .unwrap();
+    let moved = catalog
+        .rename_folder_tree(Path::new("/photos/a"), Path::new("/photos/trip"))
+        .unwrap();
+    assert_eq!(
+        moved,
+        vec![outcome[0].id, outcome[1].id],
+        "sibling /photos/ab is untouched"
+    );
+    let path_of = |id| {
+        catalog
+            .get_folder(id)
+            .unwrap()
+            .unwrap()
+            .path
+            .display()
+            .to_string()
+    };
+    assert_eq!(path_of(a.id), "/photos/trip");
+    assert_eq!(path_of(deep.id), "/photos/trip/deep");
+    assert_eq!(path_of(ab.id), "/photos/ab");
+    assert_eq!(catalog.get_folder(a.id).unwrap().unwrap().name, "trip");
+    assert_eq!(catalog.get_folder(deep.id).unwrap().unwrap().name, "deep");
+    let hits = |q: &str| {
+        let mut query = crate::PhotoQuery::new(crate::QuerySource::All);
+        query.fts = Some(q.into());
+        catalog.query_photos(&query).unwrap().len()
+    };
+    assert_eq!(
+        hits("folder_path:trip"),
+        2,
+        "search index follows the rename"
+    );
+    assert_eq!(hits("folder_path:a"), 0);
+    assert!(matches!(
+        catalog.rename_folder_tree(Path::new("/nope"), Path::new("/x")),
+        Err(CatalogError::NotFound("folder"))
+    ));
+}

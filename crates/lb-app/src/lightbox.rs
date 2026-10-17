@@ -4,9 +4,10 @@ use crate::error::Result;
 use crate::events::{AppEvent, EventBus};
 use crate::history::HistoryService;
 use crate::paths::AppPaths;
+use crate::system::{SystemOpener, SystemTrash};
 use crossbeam_channel::Receiver;
 use lb_catalog::Catalog;
-use lb_core::{Clock, SystemClock};
+use lb_core::{Clock, Opener, SystemClock, TrashBackend};
 use lb_jobs::JobQueue;
 use lb_scan::{FolderManager, ScanOptions, Scanner, WatchService};
 use lb_thumbs::ThumbCache;
@@ -23,6 +24,10 @@ pub struct LightboxOptions {
     /// Whether to start the background thread that delivers coalesced events. Tests that drive
     /// time by hand turn this off and call [`EventBus::tick`].
     pub spawn_event_ticker: bool,
+    /// Where deleted photos go.
+    pub trash: Arc<dyn TrashBackend>,
+    /// How files are opened and revealed.
+    pub opener: Arc<dyn Opener>,
 }
 
 impl Default for LightboxOptions {
@@ -30,6 +35,8 @@ impl Default for LightboxOptions {
         Self {
             clock: Arc::new(SystemClock::new()),
             spawn_event_ticker: true,
+            trash: Arc::new(SystemTrash),
+            opener: Arc::new(SystemOpener),
         }
     }
 }
@@ -40,6 +47,8 @@ pub(crate) struct Inner {
     pub(crate) jobs: JobQueue,
     pub(crate) bus: EventBus,
     pub(crate) clock: Arc<dyn Clock>,
+    pub(crate) trash: Arc<dyn TrashBackend>,
+    pub(crate) opener: Arc<dyn Opener>,
     pub(crate) thumbs: ThumbCache,
     pub(crate) folders: FolderManager,
     pub(crate) history: HistoryService,
@@ -107,6 +116,8 @@ impl Lightbox {
                 jobs,
                 bus,
                 clock: options.clock,
+                trash: options.trash,
+                opener: options.opener,
                 thumbs,
                 folders: FolderManager::new(scanner),
                 history,

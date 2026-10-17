@@ -51,6 +51,7 @@ fn events_coalesced_within_16ms() {
         LightboxOptions {
             clock: clock.clone(),
             spawn_event_ticker: false,
+            ..LightboxOptions::default()
         },
     )
     .unwrap();

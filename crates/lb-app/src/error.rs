@@ -29,6 +29,9 @@ pub enum AppError {
     /// The caller passed a value the operation cannot accept.
     #[error("invalid input: {0}")]
     Invalid(String),
+    /// A file or folder with that name already exists.
+    #[error("{} already exists", .0.display())]
+    AlreadyExists(std::path::PathBuf),
     /// The referenced entity does not exist.
     #[error("{0} not found")]
     NotFound(&'static str),

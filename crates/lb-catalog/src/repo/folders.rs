@@ -32,7 +32,7 @@ fn from_row(r: &Row<'_>) -> rusqlite::Result<Folder> {
     })
 }
 
-fn folder_name(path: &Path) -> String {
+pub(super) fn folder_name(path: &Path) -> String {
     path.file_name().map_or_else(
         || path.to_string_lossy().into_owned(),
         |n| n.to_string_lossy().into_owned(),
