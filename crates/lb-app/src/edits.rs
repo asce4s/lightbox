@@ -223,6 +223,92 @@ impl EditService {
     }
 }
 
+/// A rendered preview stored in the cache directory.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreviewFile {
+    /// JPEG file; the name contains the stack hash so a changed stack never reuses a path.
+    pub path: std::path::PathBuf,
+    /// Pixel width.
+    pub width: u32,
+    /// Pixel height.
+    pub height: u32,
+}
+
+/// How many preview files of one photo and size are kept; older ones are deleted when a new one
+/// is written. Small previews (effect tiles) come in dozens per photo.
+const PREVIEWS_KEPT: usize = 6;
+const MINI_PREVIEWS_KEPT: usize = 40;
+const MINI_EDGE: u32 = 256;
+
+impl EditService {
+    /// Renders `stack` at `max_edge` into `{cache}/previews/{id}-{stack hash}-{edge}.jpg` and
+    /// returns the file, reusing it when it exists (SPEC §9.4: "uses L thumbnail immediately, then
+    /// proxy render"). The path changes with the stack, so image caches in the UI stay correct.
+    pub fn preview_file(
+        &self,
+        id: PhotoId,
+        stack: &EditStack,
+        max_edge: u32,
+        cancel: &AtomicBool,
+    ) -> Result<PreviewFile> {
+        let dir = self.lb.paths().cache.join("previews");
+        let name = format!("{}-{}-{max_edge}.jpg", id.get(), stack.hash());
+        let path = dir.join(&name);
+        if let Ok(dims) = image::image_dimensions(&path) {
+            return Ok(PreviewFile {
+                path,
+                width: dims.0,
+                height: dims.1,
+            });
+        }
+        let rgba = self.render_stack_preview(id, stack, max_edge, cancel)?;
+        std::fs::create_dir_all(&dir)?;
+        let rgb = DynamicImage::ImageRgba8(rgba).to_rgb8();
+        let mut bytes = Vec::new();
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, 90)
+            .encode_image(&rgb)
+            .map_err(|e| AppError::Invalid(format!("preview could not be encoded: {e}")))?;
+        crate::atomic::write_bytes_atomic(&path, &bytes)?;
+        prune_previews(&dir, id, max_edge, &path);
+        Ok(PreviewFile {
+            path,
+            width: rgb.width(),
+            height: rgb.height(),
+        })
+    }
+}
+
+fn prune_previews(dir: &std::path::Path, id: PhotoId, max_edge: u32, keep: &std::path::Path) {
+    let prefix = format!("{}-", id.get());
+    let suffix = format!("-{max_edge}.jpg");
+    let limit = if max_edge <= MINI_EDGE {
+        MINI_PREVIEWS_KEPT
+    } else {
+        PREVIEWS_KEPT
+    };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut mine: Vec<(std::time::SystemTime, std::path::PathBuf)> = entries
+        .flatten()
+        .filter(|e| {
+            let name = e.file_name().to_string_lossy().into_owned();
+            name.starts_with(&prefix) && name.ends_with(&suffix)
+        })
+        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
+        .collect();
+    if mine.len() <= limit {
+        return;
+    }
+    mine.sort();
+    let excess = mine.len() - limit;
+    for (_, path) in mine.into_iter().take(excess) {
+        if path != keep {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
 fn invalid_json(e: serde_json::Error) -> AppError {
     AppError::Invalid(format!("edit stack could not be serialized: {e}"))
 }

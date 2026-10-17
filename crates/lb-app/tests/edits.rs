@@ -345,6 +345,60 @@ fn preview_reflects_stack_and_can_be_cancelled() {
 }
 
 #[test]
+fn preview_file_is_keyed_by_stack_and_reused() {
+    let t = common::library(1);
+    let (lb, id) = (&t.lb, t.ids[0]);
+    let no_cancel = AtomicBool::new(false);
+    let plain = lb
+        .edits()
+        .preview_file(id, &lb.edits().stack(id).unwrap(), 512, &no_cancel)
+        .unwrap();
+    assert!(plain.path.starts_with(lb.paths().cache.join("previews")));
+    assert!(plain.width.max(plain.height) <= 512);
+    let again = lb
+        .edits()
+        .preview_file(
+            id,
+            &lb.edits().stack(id).unwrap(),
+            512,
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+    assert_eq!(again, plain, "an existing file is reused without rendering");
+
+    lb.edits().push(id, EditOp::Sepia).unwrap();
+    let edited = lb
+        .edits()
+        .preview_file(id, &lb.edits().stack(id).unwrap(), 512, &no_cancel)
+        .unwrap();
+    assert_ne!(
+        edited.path, plain.path,
+        "the stack hash is part of the name"
+    );
+    assert_ne!(
+        std::fs::read(&edited.path).unwrap(),
+        std::fs::read(&plain.path).unwrap()
+    );
+    for n in 0..10u8 {
+        lb.edits()
+            .adjust(
+                id,
+                EditOp::Sharpen {
+                    amount: f32::from(n) / 10.0,
+                },
+            )
+            .unwrap();
+        lb.edits()
+            .preview_file(id, &lb.edits().stack(id).unwrap(), 512, &no_cancel)
+            .unwrap();
+    }
+    let kept = std::fs::read_dir(lb.paths().cache.join("previews"))
+        .unwrap()
+        .count();
+    assert!(kept <= 6, "old previews are pruned, {kept} kept");
+}
+
+#[test]
 fn original_file_unchanged_after_edits() {
     let t = common::library(1);
     let (lb, id) = (&t.lb, t.ids[0]);

@@ -92,6 +92,36 @@ ids! {
     TAG_OK = "tag-ok",
     TAG_CANCEL = "tag-cancel",
     TOAST = "toast",
+    VIEWER_BACK = "viewer-back",
+    VIEWER_EDIT = "viewer-edit",
+    VIEWER_INFO = "viewer-info",
+    VIEWER_INFO_PANEL = "viewer-info-panel",
+    VIEWER_IMAGE = "viewer-image",
+    VIEWER_FILMSTRIP = "viewer-filmstrip",
+    VIEWER_ZOOM_LABEL = "viewer-zoom-label",
+    EDITOR_BACK = "editor-back",
+    EDITOR_BEFORE_AFTER = "editor-before-after",
+    EDITOR_EXPORT = "editor-export",
+    EDITOR_STAGE = "editor-stage",
+    EDITOR_IMAGE = "editor-image",
+    EDITOR_BUSY = "editor-busy",
+    EDITOR_AUTO_CONTRAST = "editor-auto-contrast",
+    EDITOR_AUTO_COLOR = "editor-auto-color",
+    EDITOR_CROP = "editor-crop",
+    EDITOR_STRAIGHTEN = "editor-straighten",
+    EDITOR_REDEYE = "editor-redeye",
+    SLIDER_BASIC_FILL_LIGHT = "slider-basic-fill-light",
+    SLIDER_STRAIGHTEN = "slider-straighten",
+    TOOL_PANEL = "tool-panel",
+    TOOL_APPLY = "tool-apply",
+    TOOL_CANCEL = "tool-cancel",
+    TOOL_CLEAR = "tool-clear",
+    CROP_OVERLAY = "crop-overlay",
+    CROP_RECT = "crop-rect",
+    REDEYE_OVERLAY = "redeye-overlay",
+    EFFECT_PANEL = "effect-panel",
+    EFFECT_APPLY = "effect-apply",
+    EFFECT_CANCEL = "effect-cancel",
 }
 
 fn named(name: &'static str, n: u64) -> ElementId {
@@ -140,4 +170,24 @@ pub fn effect_tile(name: &str) -> ElementId {
 /// A thumbnail in the viewer's filmstrip.
 pub fn filmstrip_cell(id: PhotoId) -> ElementId {
     named("filmstrip-cell", unsigned(id.get()))
+}
+
+/// An aspect preset button of the crop tool (`free`, `original`, `1x1`, ...).
+pub fn crop_aspect(key: &str) -> ElementId {
+    ElementId::Name(format!("crop-aspect-{key}").into())
+}
+
+/// A resize handle of the crop rectangle (`top-left`, `right`, ...).
+pub fn crop_handle(key: &str) -> ElementId {
+    ElementId::Name(format!("crop-handle-{key}").into())
+}
+
+/// A slider of an effect's parameter panel.
+pub fn effect_param(key: &str) -> ElementId {
+    ElementId::Name(format!("effect-param-{key}").into())
+}
+
+/// A rectangle drawn by the red-eye tool.
+pub fn redeye_region(index: usize) -> ElementId {
+    named("redeye-region", index as u64)
 }

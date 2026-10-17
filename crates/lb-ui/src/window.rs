@@ -28,6 +28,17 @@ pub const TEST_WINDOW_SIZE: (f32, f32) = (1280.0, 800.0);
 /// How often the production window drains events and applies debounced searches.
 pub const PUMP_INTERVAL: Duration = Duration::from_millis(16);
 
+/// The screen the window shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Route {
+    /// Grid, sidebar and tray.
+    Library,
+    /// Single photo.
+    Viewer,
+    /// Editor.
+    Editor,
+}
+
 /// A modal or popup drawn above the library.
 pub enum Overlay {
     /// Nothing is open.
@@ -87,6 +98,9 @@ pub struct LightboxWindow {
     pub(crate) jobs: usize,
     pub(crate) info_open: bool,
     pub(crate) opened: Option<PhotoId>,
+    pub(crate) viewer: Option<crate::viewer::ViewerState>,
+    pub(crate) editor: Option<crate::editor::EditorState>,
+    pub(crate) viewport: (f32, f32),
     last_anchor_row: Option<usize>,
     _subscriptions: Vec<Subscription>,
 }
@@ -149,6 +163,9 @@ impl LightboxWindow {
             jobs: 0,
             info_open: false,
             opened: None,
+            viewer: None,
+            editor: None,
+            viewport: TEST_WINDOW_SIZE,
             last_anchor_row: None,
             _subscriptions: subscriptions,
         };
@@ -207,7 +224,18 @@ impl LightboxWindow {
         &self.overlay
     }
 
-    /// The photo the viewer was asked to open, until the viewer is built (M8).
+    /// Which screen is showing.
+    pub fn route(&self) -> Route {
+        if self.editor.is_some() {
+            Route::Editor
+        } else if self.viewer.is_some() {
+            Route::Viewer
+        } else {
+            Route::Library
+        }
+    }
+
+    /// The photo most recently opened in the viewer.
     pub fn opened(&self) -> Option<PhotoId> {
         self.opened
     }
@@ -226,8 +254,17 @@ impl LightboxWindow {
     pub fn pump(&mut self, cx: &mut Context<Self>) {
         let mut changed = self.vm.tick();
         let mut refresh_sidebar = false;
+        let mut viewer_stale = false;
+        let mut editor_stale = false;
         while let Ok(event) = self.events.try_recv() {
             changed |= self.vm.handle_event(&event);
+            if let Some(v) = &mut self.viewer
+                && !v.vm.handle_event(&event)
+            {
+                self.viewer = None;
+                self.editor = None;
+                changed = true;
+            }
             match &event {
                 AppEvent::ThumbReady { id, .. } => {
                     self.thumbs.retain(|(p, _), _| p != id);
@@ -238,6 +275,12 @@ impl LightboxWindow {
                     self.thumbs.retain(|(p, _), _| p != id);
                     self.requested.retain(|(p, _)| p != id);
                     changed = true;
+                    if self.viewer.as_ref().is_some_and(|v| v.vm.current() == *id) {
+                        viewer_stale = true;
+                    }
+                    if self.editor.as_ref().is_some_and(|e| e.vm.photo() == *id) {
+                        editor_stale = true;
+                    }
                 }
                 AppEvent::ScanProgress {
                     done,
@@ -276,6 +319,12 @@ impl LightboxWindow {
         }
         if let Overlay::Export { vm, .. } = &mut self.overlay {
             vm.poll();
+        }
+        if viewer_stale && self.editor.is_none() {
+            self.viewer_reload(cx);
+        }
+        if editor_stale {
+            self.editor_changed(cx);
         }
         if refresh_sidebar {
             if let Err(e) = self.sidebar.refresh() {
@@ -364,12 +413,6 @@ impl LightboxWindow {
         cx.notify();
     }
 
-    /// Opens the viewer on `id`.
-    pub fn open_photo(&mut self, id: PhotoId, cx: &mut Context<Self>) {
-        self.opened = Some(id);
-        cx.notify();
-    }
-
     /// Moves keyboard focus in the grid and scrolls the new cell into view.
     pub fn move_focus(&mut self, key: NavKey, extend: bool, cx: &mut Context<Self>) {
         self.vm.move_focus(key, extend);
@@ -377,7 +420,7 @@ impl LightboxWindow {
         cx.notify();
     }
 
-    fn reveal_focused(&mut self) {
+    pub(crate) fn reveal_focused(&mut self) {
         let Some(id) = self.vm.focused() else { return };
         let Some((group, index)) = self.vm.position_of(id) else {
             return;

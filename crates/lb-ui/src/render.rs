@@ -1,12 +1,13 @@
 //! `Render` for the library window: layout, grid and keyboard handling.
 
 use crate::ids;
-use crate::window::{INFO_WIDTH, LightboxWindow, Overlay, SIDEBAR_WIDTH};
+use crate::window::{INFO_WIDTH, LightboxWindow, Overlay, Route, SIDEBAR_WIDTH};
 use gpui_kit::component::{ActiveTheme as _, h_resizable, resizable_panel, v_virtual_list};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, Context, Focusable as _, FontWeight, IntoElement, KeyDownEvent, MouseButton,
-    MouseDownEvent, ObjectFit, Render, TestSupportExt as _, Window, div, img, px, size,
+    AnyElement, Context, Focusable as _, FontWeight, IntoElement, KeyDownEvent, KeyUpEvent,
+    MouseButton, MouseDownEvent, ObjectFit, Render, TestSupportExt as _, Window, div, img, px,
+    size,
 };
 use lb_app::vm::{GAP, GridRow, HEADER_HEIGHT, Modifiers, NavKey};
 use lb_core::Photo;
@@ -18,47 +19,55 @@ const GRID_PADDING: f32 = GAP;
 impl Render for LightboxWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme().clone();
-        let info = self.info_open;
-        let sidebar = self.render_sidebar(cx);
-        let grid = self.render_grid(window, cx);
-        let info_panel = self.render_info_panel(cx);
-        let main = h_resizable("main-panels")
-            .with_state(&self.panels)
-            .child(
-                resizable_panel()
-                    .size(px(SIDEBAR_WIDTH))
-                    .size_range(px(160.)..px(420.))
-                    .child(sidebar),
-            )
-            .child(resizable_panel().child(grid))
-            .child(
-                resizable_panel()
-                    .visible(info)
-                    .size(px(INFO_WIDTH))
-                    .size_range(px(200.)..px(480.))
-                    .child(info_panel),
-            );
+        let viewport = window.viewport_size();
+        self.viewport = (f32::from(viewport.width), f32::from(viewport.height));
         let overlay = self.render_overlay(window, cx);
-        div()
+        let root = div()
             .id(ids::ROOT)
             .test_support()
             .track_focus(&self.focus)
             .key_context("Lightbox")
             .on_key_down(cx.listener(Self::on_key_down))
+            .on_key_up(cx.listener(Self::on_key_up))
             .relative()
             .size_full()
             .flex()
             .flex_col()
             .bg(theme.background)
             .text_color(theme.foreground)
-            .text_sm()
-            .child(self.render_title_bar(cx))
-            .child(self.render_chips(cx))
-            .child(div().flex_1().min_h_0().child(main))
-            .child(self.render_tray(cx))
-            .child(self.render_status_bar(window, cx))
-            .children(overlay)
-            .children(self.render_toast(cx))
+            .text_sm();
+        let root = match self.route() {
+            Route::Editor => root.child(self.render_editor(window, cx)),
+            Route::Viewer => root.child(self.render_viewer(cx)),
+            Route::Library => {
+                let info = self.info_open;
+                let sidebar = self.render_sidebar(cx);
+                let grid = self.render_grid(window, cx);
+                let info_panel = self.render_info_panel(cx);
+                let main = h_resizable("main-panels")
+                    .with_state(&self.panels)
+                    .child(
+                        resizable_panel()
+                            .size(px(SIDEBAR_WIDTH))
+                            .size_range(px(160.)..px(420.))
+                            .child(sidebar),
+                    )
+                    .child(resizable_panel().child(grid))
+                    .child(
+                        resizable_panel()
+                            .visible(info)
+                            .size(px(INFO_WIDTH))
+                            .size_range(px(200.)..px(480.))
+                            .child(info_panel),
+                    );
+                root.child(self.render_title_bar(cx))
+                    .child(self.render_chips(cx))
+                    .child(div().flex_1().min_h_0().child(main))
+                    .child(self.render_tray(cx))
+                    .child(self.render_status_bar(window, cx))
+            }
+        };
+        root.children(overlay).children(self.render_toast(cx))
     }
 }
 
@@ -283,6 +292,12 @@ impl LightboxWindow {
             .into_any_element()
     }
 
+    fn on_key_up(&mut self, ev: &KeyUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.route() == Route::Editor {
+            self.editor_key_up(ev.keystroke.key.as_str(), cx);
+        }
+    }
+
     fn on_key_down(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         let key = ev.keystroke.key.as_str();
         let m = ev.keystroke.modifiers;
@@ -292,6 +307,17 @@ impl LightboxWindow {
                 self.close_overlay(window, cx);
             }
             return;
+        }
+        match self.route() {
+            Route::Viewer => {
+                self.viewer_key(key, window, cx);
+                return;
+            }
+            Route::Editor => {
+                self.editor_key(key, m.shift, cmd, window, cx);
+                return;
+            }
+            Route::Library => {}
         }
         if cmd && key == "f" {
             window.focus(&self.search.focus_handle(cx), cx);
@@ -331,6 +357,11 @@ impl LightboxWindow {
             "z" if cmd && !m.shift => self.undo_organize(cx),
             "r" if cmd => self.rotate_targets(if m.shift { -1 } else { 1 }, cx),
             "s" if !cmd => self.toggle_star_targets(cx),
+            "e" if !cmd => {
+                if let Some(id) = self.vm.focused() {
+                    self.open_editor(id, window, cx);
+                }
+            }
             digit if !cmd && digit.len() == 1 => {
                 if let Some(d) = digit.chars().next().and_then(|c| c.to_digit(10))
                     && d <= 5

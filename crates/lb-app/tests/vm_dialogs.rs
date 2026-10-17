@@ -19,7 +19,11 @@ fn vm_sidebar_sections_counts_and_selection() {
     assert_eq!(lib_items[1].count, 1);
     assert_eq!(sb.select(SidebarKey::Starred), Some(ViewSource::Starred));
     assert_eq!(sb.selected(), SidebarKey::Starred);
-    assert_eq!(sb.select(SidebarKey::Year(None)), None, "headings are not selectable");
+    assert_eq!(
+        sb.select(SidebarKey::Year(None)),
+        None,
+        "headings are not selectable"
+    );
 
     let (album, source) = sb.create_album().unwrap();
     assert_eq!(album.name, "New album");
@@ -30,7 +34,10 @@ fn vm_sidebar_sections_counts_and_selection() {
     lib.lb.albums().delete(second.id).unwrap();
     sb.refresh().unwrap();
     assert_eq!(sb.sections()[1].items.len(), 1);
-    assert_eq!(SidebarVm::key_for(&ViewSource::Starred), Some(SidebarKey::Starred));
+    assert_eq!(
+        SidebarVm::key_for(&ViewSource::Starred),
+        Some(SidebarKey::Starred)
+    );
 }
 
 #[test]
@@ -53,7 +60,11 @@ fn vm_rename_validates_live() {
     vm.set_text(&lib.lb, "a/b");
     assert!(vm.error().is_some() && !vm.can_accept());
     vm.set_text(&lib.lb, "p01");
-    assert!(vm.error().unwrap().contains("already exists"), "{:?}", vm.error());
+    assert!(
+        vm.error().unwrap().contains("already exists"),
+        "{:?}",
+        vm.error()
+    );
     vm.set_text(&lib.lb, "beach");
     assert!(vm.error().is_none() && vm.can_accept());
     vm.accept(&lib.lb).unwrap();

@@ -4,13 +4,18 @@
 pub mod ids;
 
 mod chrome;
+mod editor;
 mod hello;
 mod overlays;
 mod render;
+mod stage;
+mod viewer;
 mod window;
 
+pub use editor::{EDITOR_BAR_HEIGHT, EDITOR_PANEL_WIDTH, Tool};
 pub use hello::{HELLO_TEXT, HelloWindow, open_hello_window};
-pub use window::{LightboxWindow, Overlay, thumb_size_for};
+pub use viewer::{FILMSTRIP_HEIGHT, VIEWER_BAR_HEIGHT};
+pub use window::{LightboxWindow, Overlay, Route, thumb_size_for};
 
 /// Starts the GUI event loop on `app` and blocks until the last window closes.
 pub fn run(app: lb_app::Lightbox) {

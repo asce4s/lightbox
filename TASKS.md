@@ -77,12 +77,12 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 ## M8 — Viewer + Editor UI (P0)
 
-- [ ] **M8.1** Viewer with zoom/pan/filmstrip/info panel. Tests: `ui_open_viewer_and_navigate`, `ui_viewer_escape_returns_focus`.
-- [ ] **M8.2** Editor tabs + Lucky/Auto + undo/redo/revert. Tests: `ui_editor_lucky_then_undo`, `ui_editor_revert_confirm`.
-- [ ] **M8.3** Tuning sliders with preview-then-commit. Test: `ui_editor_slider_commits_one_op`.
-- [ ] **M8.4** Effects grid + param panels. Test: `ui_effect_apply_and_cancel`.
-- [ ] **M8.5** Crop & Straighten tools. Tests: `vm_crop_aspect_lock`, `ui_crop_apply_pushes_crop_op`.
-- [ ] **M8.6** Red-eye tool; before/after toggle (P1). Tests: `ui_before_after_toggle_shows_original`, `vm_redeye_region_normalized`.
+- [x] **M8.1** Viewer with zoom/pan/filmstrip/info panel. Tests: `ui_open_viewer_and_navigate`, `ui_viewer_escape_returns_focus`.
+- [x] **M8.2** Editor tabs + Lucky/Auto + undo/redo/revert. Tests: `ui_editor_lucky_then_undo`, `ui_editor_revert_confirm`.
+- [x] **M8.3** Tuning sliders with preview-then-commit. Test: `ui_editor_slider_commits_one_op`.
+- [x] **M8.4** Effects grid + param panels. Test: `ui_effect_apply_and_cancel`.
+- [x] **M8.5** Crop & Straighten tools. Tests: `vm_crop_aspect_lock`, `ui_crop_apply_pushes_crop_op`.
+- [x] **M8.6** Red-eye tool; before/after toggle (P1). Tests: `ui_before_after_toggle_shows_original`, `vm_redeye_region_normalized`.
 
 ## M9 — P1 features
 
@@ -164,6 +164,12 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 2026-10-17 · M7.6 · context menu, delete confirm, rename dialog with live validation, tag dialog, album picker · ui_delete_shows_confirm_and_cancels, ui_rename_dialog_validates, vm_confirm_delete_message_and_accept, vm_rename_validates_live
 2026-10-17 · M7.7 · photo tray (hold, clear, persists across sources, is the action target before the selection) · ui_tray_hold_and_clear, ui_star_from_tray_updates_catalog
 2026-10-17 · M7.8 · export dialog wired to ExportService (destination, size, GPS, PNG, progress and result) · ui_export_dialog_runs_job
+2026-10-17 · M8.1 · viewer route with fit/zoom/pan, double-click 100%, filmstrip, info panel, proxy renders and Esc back to the grid focus; tests ui_open_viewer_and_navigate, ui_viewer_escape_returns_focus
+2026-10-17 · M8.2 · editor route with tabs, Lucky/Auto Contrast/Auto Color, undo/redo and confirmed revert; tests ui_editor_lucky_then_undo, ui_editor_revert_confirm, preview_file_is_keyed_by_stack_and_reused
+2026-10-17 · M8.3 · Tuning and Fill-light sliders with preview-then-commit; test ui_editor_slider_commits_one_op, ui_straighten_slider_previews_then_applies
+2026-10-17 · M8.4 · effects grid with mini previews and parameter panels; tests ui_effect_apply_and_cancel, effect_table_matches_op_names_and_validates, hue_to_rgb_is_in_gamut
+2026-10-17 · M8.5 · crop tool with aspect presets, handles, thirds overlay, nudging, plus straighten overlay; tests vm_crop_aspect_lock, crop_presets_follow_orientation, crop_move_nudge_and_op, ui_crop_apply_pushes_crop_op
+2026-10-17 · M8.6 · red-eye tool and before/after toggle (button and held backslash); tests ui_before_after_toggle_shows_original, vm_redeye_region_normalized, ui_redeye_drag_adds_region
 
 ## Decisions
 
@@ -279,6 +285,14 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - UI: Import/Slideshow/Collage/Settings title-bar buttons are not drawn until their milestone (M9); only Export and search are in the title bar.
 - lb-app additions for the UI: `SidebarVm`, `ConfirmVm`, `RenameVm` (+ `PhotoService::check_rename`), `ThumbService::request_visible`, `LibraryVm::take_error`, `EventReceiver` re-export.
 - `is:edited` etc. unchanged. The sidebar hides empty folders that have no capture date.
+- M8: the window has three routes (`Route::{Library, Viewer, Editor}`), each drawn in place of the library chrome; library state (grid, selection, scroll) is kept while viewing. The editor opened from the viewer returns to the viewer; Esc closes an open tool/effect panel/draft first, then leaves. `e` also opens the editor from the library grid.
+- M8 previews: `EditService::preview_file` renders a stack to `{cache}/previews/{id}-{stack hash}-{edge}.jpg` (reused when present, pruned to 6 per photo and size, 40 for tiles <= 256 px) so `img(path)` caching is always correct. Viewer: L thumbnail immediately, then a 2560 px proxy (full size up to 8192 when zoomed). Editor: 1280 px proxy. Renders run on the background executor with a cancel flag (`Stage`), and the previous frame stays visible while the next renders ("Rendering..." marker, `EDITOR_BUSY`).
+- M8 geometry: the viewer/editor derive the picture area from the window viewport and fixed chrome sizes (bars, panel width) instead of measuring bounds, so fit/zoom maths is testable with no layout pass.
+- M8 filmstrip: only cells within about one screen width of the current photo are drawn (thumbnails are requested per drawn cell); the row is positioned so the current photo is centred.
+- M8 Tuning/Fill-light sliders: `Change` writes the draft (live preview), `Release` commits one op. Straighten and effect parameter sliders only change the draft; Apply commits (`adjust`), Cancel drops it. Effects without parameters (Sepia, B&W, Warmify) apply on click. Effect tiles show mini previews (128 px renders of committed stack + default op). Tint/Graduated tint expose a hue slider (colour = saturated hue, S 0.7, V 0.9).
+- M8 not built (not in a task): Retouch tool, Neutral colour eyedropper, caption editor and mini-map in the info panel; the info panel shows file, size, dimensions, date, camera, GPS and caption.
+- GPUI: SPEC `Slider` ids → the slider is wrapped in a `div` with the `lb_ui::ids` id (the component's own id is entity based); tests click/drag inside that wrapper. SPEC "hold `\`" → key down sets Before, key up clears it (`on_key_up`), plus a toggle button.
+- lb-app additions for M8: `PreviewFile`, `EditService::preview_file`, `vm::{CropVm, AspectPreset, CropHandle, RedEyeVm, DisplayRect, EffectPanelVm, EFFECTS}` and `ConfirmAction::Revert`.
 
 ## Blockers
 
