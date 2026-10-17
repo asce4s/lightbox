@@ -155,4 +155,4 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 
 <!-- YYYY-MM-DD · task id · exact error · what was tried · tasks affected -->
 
-- 2026-10-17 · M0.7 · not a blocker, a verification gap: the macOS and Windows legs of `ci.yml` have never run (only Linux locally). Fix any platform-specific failures from the first pushed run before starting M1; affected: all tasks' cross-OS exit criterion (SPEC §14 M0).
+- (resolved) 2026-10-17 · M0.7 · macOS/Windows legs unverified locally → first pushed run (GitHub Actions run 39010488330) was green on ubuntu, macos and windows.
