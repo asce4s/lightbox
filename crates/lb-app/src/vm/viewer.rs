@@ -3,8 +3,12 @@
 use crate::error::Result;
 use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
-use crate::viewer::{Motion, MotionMode, Presented, RectF};
+use crate::viewer::{
+    FolderRefresh, FolderWatch, Motion, MotionMode, NavSet, Presented, RectF, ViewerEntry,
+    entry_from_id,
+};
 use lb_core::{Photo, PhotoId};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Smallest and largest zoom factor.
@@ -38,6 +42,8 @@ pub struct ViewerVm {
     lb: Lightbox,
     ids: Vec<PhotoId>,
     index: usize,
+    nav: NavSet,
+    watch: Option<FolderWatch>,
     zoom: ZoomMode,
     pan: (f32, f32),
     show_info: bool,
@@ -48,15 +54,88 @@ impl ViewerVm {
     /// Opens `start` within `ids` (the current view). `None` when `start` is not in the list.
     pub fn open(lb: &Lightbox, ids: Vec<PhotoId>, start: PhotoId) -> Option<Self> {
         let index = ids.iter().position(|i| *i == start)?;
-        Some(Self {
+        let entries: Vec<_> = ids.iter().map(|id| entry_from_id(lb, *id)).collect();
+        let nav = NavSet::library(entries, index, ids);
+        let mut vm = Self {
             lb: lb.clone(),
-            ids,
-            index,
+            ids: Vec::new(),
+            index: 0,
+            nav,
+            watch: None,
             zoom: ZoomMode::Fit,
             pan: (0.0, 0.0),
             show_info: false,
             motion: Motion::new(MotionMode::Full, (0.0, 0.0)),
-        })
+        };
+        vm.sync();
+        Some(vm)
+    }
+
+    /// Opens files or one folder from outside the grid (SPEC-VIEWER §V2.2).
+    pub fn open_paths(lb: &Lightbox, paths: &[impl AsRef<Path>]) -> Result<Self> {
+        let paths: Vec<PathBuf> = paths.iter().map(|p| p.as_ref().to_path_buf()).collect();
+        let nav = NavSet::open_paths(lb, &paths)?;
+        let watch = nav
+            .source_dir()
+            .and_then(|dir| FolderWatch::start(dir).ok());
+        let mut vm = Self {
+            lb: lb.clone(),
+            ids: Vec::new(),
+            index: 0,
+            nav,
+            watch,
+            zoom: ZoomMode::Fit,
+            pan: (0.0, 0.0),
+            show_info: false,
+            motion: Motion::new(MotionMode::Full, (0.0, 0.0)),
+        };
+        vm.sync();
+        Ok(vm)
+    }
+
+    /// The entry on screen.
+    #[must_use]
+    pub fn current_entry(&self) -> &ViewerEntry {
+        self.nav.current()
+    }
+
+    /// Every entry in navigation order.
+    #[must_use]
+    pub fn entries(&self) -> &[ViewerEntry] {
+        self.nav.entries()
+    }
+
+    /// Catalog id of the current entry, when it is an indexed readable photo.
+    #[must_use]
+    pub fn current_photo(&self) -> Option<PhotoId> {
+        self.nav.current().photo
+    }
+
+    /// Re-reads the folder after a create or delete. Library lists stay as they are.
+    pub fn refresh(&mut self) -> Result<FolderRefresh> {
+        let change = self.nav.refresh(&self.lb)?;
+        self.sync();
+        Ok(change)
+    }
+
+    /// Applies a directory-watch event, if one is waiting.
+    pub fn poll_folder(&mut self) -> Result<FolderRefresh> {
+        let pending = self.watch.as_ref().is_some_and(FolderWatch::poll);
+        if pending {
+            self.refresh()
+        } else {
+            Ok(FolderRefresh::Kept)
+        }
+    }
+
+    fn sync(&mut self) {
+        self.ids = self
+            .nav
+            .entries()
+            .iter()
+            .map(|e| e.photo.unwrap_or(PhotoId::new(0)))
+            .collect();
+        self.index = self.nav.index();
     }
 
     /// The frame at `now` (`Clock::elapsed()`). Geometry is sampled, not animated by GPUI.
@@ -113,10 +192,10 @@ impl ViewerVm {
     }
 
     fn go(&mut self, index: usize) -> bool {
-        if index == self.index || index >= self.ids.len() {
+        if !self.nav.go(index) {
             return false;
         }
-        self.index = index;
+        self.sync();
         self.zoom = ZoomMode::Fit;
         self.pan = (0.0, 0.0);
         true
@@ -217,16 +296,20 @@ impl ViewerVm {
     /// closes the viewer.
     pub fn handle_event(&mut self, event: &AppEvent) -> bool {
         if let AppEvent::PhotosRemoved { ids } = event {
-            let current = self.current();
-            self.ids.retain(|i| !ids.contains(i));
-            if self.ids.is_empty() {
+            let current = self.nav.current().path.clone();
+            self.nav.retain_photos(ids);
+            if self.nav.entries().is_empty() {
+                self.sync();
                 return false;
             }
-            self.index = self
-                .ids
+            let index = self
+                .nav
+                .entries()
                 .iter()
-                .position(|i| *i == current)
-                .unwrap_or_else(|| self.index.min(self.ids.len() - 1));
+                .position(|e| e.path == current)
+                .unwrap_or_else(|| self.nav.index().min(self.nav.entries().len() - 1));
+            self.nav.set_index(index);
+            self.sync();
         }
         true
     }

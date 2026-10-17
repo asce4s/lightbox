@@ -38,6 +38,7 @@ image = { workspace = true, features = ["jpeg", "png"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }
 indexmap = { workspace = true }
+notify = { workspace = true }
 parking_lot = { workspace = true }
 walkdir = { workspace = true }
 serde = { workspace = true }

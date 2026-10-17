@@ -1,10 +1,17 @@
 //! UI-agnostic viewer: geometry, motion, navigation and loading (SPEC-VIEWER).
 
 mod ambient;
+mod entry;
 mod motion;
+mod service;
 mod transform;
 
 pub use ambient::{AmbientCache, bucket_stage};
+pub use entry::{
+    FolderRefresh, FolderSort, FolderWatch, NavSet, NavSource, ViewerEntry, entry_from_id,
+    list_folder,
+};
+pub use service::ViewerService;
 
 pub use motion::{
     LayerState, Motion, MotionMode, Presented, ease_in_cubic, ease_in_out_cubic, ease_out_cubic,

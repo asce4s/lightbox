@@ -148,6 +148,16 @@ SELECT p.id, p.folder_id, f.path, p.file_name, p.media_type, p.format, p.file_si
        p.hidden, p.edit_version, p.status, p.error, p.duration_ms
 FROM photos p JOIN folders f ON f.id = p.folder_id";
 
+/// Folder path hits `folders.path` (UNIQUE); the file name hits `photos(folder_id, file_name)`.
+const BY_PATH: &str = "
+SELECT p.id, p.folder_id, f.path, p.file_name, p.media_type, p.format, p.file_size, p.file_mtime,
+       p.quick_key, p.content_hash, p.orientation, p.width, p.height, p.taken_at, p.taken_at_src,
+       p.camera_make, p.camera_model, p.gps_lat, p.gps_lon, p.caption, p.starred, p.rating,
+       p.hidden, p.edit_version, p.status, p.error, p.duration_ms
+FROM folders f
+JOIN photos p ON p.folder_id = f.id AND p.file_name = ?2
+WHERE f.path = ?1";
+
 /// Rows per `IN (...)` query; keeps well under SQLite's variable limit.
 const CHUNK: usize = 500;
 
@@ -428,10 +438,19 @@ impl Catalog {
             path_str(Path::new(name))?.to_owned(),
         );
         self.read(|c| {
-            let mut stmt =
-                c.prepare_cached(&format!("{SELECT} WHERE f.path = ?1 AND p.file_name = ?2"))?;
+            let mut stmt = c.prepare_cached(BY_PATH)?;
             let mut rows = stmt.query_map((parent, name), from_row)?;
             Ok(rows.next().transpose()?)
+        })
+    }
+
+    /// `EXPLAIN QUERY PLAN` of [`Self::photo_by_path`]. Both the folder path and the file name
+    /// are looked up through their unique indexes (SPEC-VIEWER §V8.2).
+    pub fn photo_by_path_plan(&self) -> Result<Vec<String>> {
+        self.read(|c| {
+            let mut stmt = c.prepare(&format!("EXPLAIN QUERY PLAN {BY_PATH}"))?;
+            let rows = stmt.query_map(("", ""), |r| r.get::<_, String>(3))?;
+            Ok(rows.collect::<rusqlite::Result<_>>()?)
         })
     }
 
