@@ -21,6 +21,15 @@ pub enum CatalogError {
     /// A write was requested from inside a write closure, which would deadlock the writer.
     #[error("catalog write requested from the writer thread (re-entrant write)")]
     ReentrantWrite,
+    /// A path cannot be stored because it is not valid UTF-8.
+    #[error("path is not valid UTF-8: {}", .0.display())]
+    NonUtf8Path(std::path::PathBuf),
+    /// The referenced row does not exist.
+    #[error("{0} not found")]
+    NotFound(&'static str),
+    /// A tag name failed validation.
+    #[error(transparent)]
+    InvalidTagName(#[from] lb_core::InvalidTagName),
     /// The database was created by a newer version of Lightbox.
     #[error("catalog schema is newer than this version of Lightbox supports")]
     SchemaTooNew,

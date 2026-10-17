@@ -3,8 +3,10 @@
 
 mod db;
 mod error;
+mod repo;
 mod schema;
 
 pub use db::Catalog;
 pub use error::{CatalogError, Result};
+pub use repo::{EditRecord, NewFolder, PhotoUpsert, UpsertOutcome};
 pub use schema::LATEST_SCHEMA_VERSION;

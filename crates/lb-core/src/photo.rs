@@ -42,6 +42,16 @@ impl Format {
 }
 
 string_enum!(
+    /// Where a photo's `taken_at` came from (SPEC §6.2.2 precedence order).
+    TakenAtSource, "taken-at source", {
+        Exif => "exif",
+        Video => "video",
+        Filename => "filename",
+        Mtime => "mtime",
+    }
+);
+
+string_enum!(
     /// Indexing state of a photo row.
     PhotoStatus, "photo status", {
         Ok => "ok",
@@ -74,12 +84,22 @@ pub struct Photo {
     pub format: Format,
     /// File size in bytes.
     pub size: u64,
+    /// File modification time in unix seconds when last indexed.
+    pub file_mtime: i64,
+    /// Cheap content fingerprint (`blake3(size || head || tail)`, hex).
+    pub quick_key: String,
+    /// Full-file blake3 hash (hex), once computed.
+    pub content_hash: Option<String>,
+    /// EXIF orientation 1..=8 of the stored file.
+    pub orientation: u8,
     /// Width in pixels after EXIF orientation.
     pub width: Option<u32>,
     /// Height in pixels after EXIF orientation.
     pub height: Option<u32>,
     /// Capture time as naive local time.
     pub taken_at: Option<NaiveDateTime>,
+    /// Which rule produced `taken_at`.
+    pub taken_at_src: Option<TakenAtSource>,
     /// `"<make> <model>"` when known.
     pub camera: Option<String>,
     /// GPS position.
@@ -96,6 +116,8 @@ pub struct Photo {
     pub edit_version: u32,
     /// Indexing state.
     pub status: PhotoStatus,
+    /// Why the file is unreadable, when `status` is not `ok`.
+    pub error: Option<String>,
 }
 
 #[cfg(test)]
@@ -135,9 +157,14 @@ mod tests {
             media_type: MediaType::Image,
             format: Format::Jpeg,
             size: 123_456,
+            file_mtime: 1_577_836_800,
+            quick_key: "ab12".into(),
+            content_hash: None,
+            orientation: 1,
             width: Some(640),
             height: Some(480),
             taken_at: NaiveDate::from_ymd_opt(2021, 7, 1).and_then(|d| d.and_hms_opt(12, 0, 0)),
+            taken_at_src: Some(TakenAtSource::Exif),
             camera: Some("Canon EOS R6".into()),
             gps: Some(GeoPoint {
                 lat: 38.7223,
@@ -149,6 +176,7 @@ mod tests {
             hidden: false,
             edit_version: 3,
             status: PhotoStatus::Ok,
+            error: None,
         };
         let json = serde_json::to_string(&photo).unwrap();
         assert!(

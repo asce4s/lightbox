@@ -3,10 +3,15 @@
 
 mod error;
 mod ids;
+mod library;
 mod photo;
 mod query;
 
 pub use error::ParseEnumError;
-pub use ids::{AlbumId, FaceId, FolderId, JobId, PersonId, PhotoId, TagId};
-pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus};
+pub use ids::{AlbumId, FaceId, FolderId, JobId, PersonId, PhotoId, RootId, TagId};
+pub use library::{
+    Album, Folder, InvalidTagName, MAX_TAG_NAME_CHARS, Root, RootMode, Tag, TagUsage,
+    normalize_tag_name,
+};
+pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
 pub use query::{GroupBy, Selection, SortOrder};

@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 lb-core = { path = "../lb-core" }
+chrono = { workspace = true }
 crossbeam-channel = { workspace = true }
 rusqlite = { workspace = true }
 rusqlite_migration = { workspace = true }

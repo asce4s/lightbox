@@ -32,6 +32,10 @@ macro_rules! id_type {
 }
 
 id_type!(
+    /// Identifies a configured root folder.
+    RootId
+);
+id_type!(
     /// Identifies a photo or video row.
     PhotoId
 );
@@ -79,7 +83,9 @@ mod tests {
                 assert_eq!(id.to_string(), "42");
             )+};
         }
-        check!(PhotoId, FolderId, AlbumId, TagId, PersonId, FaceId, JobId);
+        check!(
+            RootId, PhotoId, FolderId, AlbumId, TagId, PersonId, FaceId, JobId
+        );
     }
 
     #[test]

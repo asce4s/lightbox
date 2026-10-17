@@ -3838,6 +3838,7 @@ dependencies = [
 name = "lb-catalog"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "crossbeam-channel",
  "lb-core",
  "rusqlite",

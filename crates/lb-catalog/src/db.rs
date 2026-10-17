@@ -3,7 +3,7 @@
 use crate::error::{CatalogError, Result};
 use crate::schema;
 use crossbeam_channel::{Receiver, Sender};
-use rusqlite::{Connection, OpenFlags, Transaction};
+use rusqlite::{Connection, OpenFlags, Transaction, TransactionBehavior};
 use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
@@ -186,7 +186,10 @@ impl Catalog {
         F: FnOnce(&Transaction<'_>) -> Result<T> + Send + 'static,
     {
         self.write(move |conn| {
-            let tx = conn.transaction()?;
+            // IMMEDIATE takes the WAL write lock up front so the busy handler applies; a DEFERRED
+            // read-then-write transaction fails instantly (~3% of runs) if a reader transiently
+            // holds the lock while maintaining the wal-index.
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let value = f(&tx)?;
             tx.commit()?;
             Ok(value)
