@@ -8,11 +8,17 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+test-strategies = ["dep:proptest"]
+
 [dependencies]
+blake3 = { workspace = true }
 chrono = { workspace = true }
 indexmap = { workspace = true }
 serde = { workspace = true }
+proptest = { workspace = true, optional = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
+proptest = { workspace = true }

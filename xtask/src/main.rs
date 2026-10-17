@@ -13,6 +13,7 @@ const USAGE: &str = "usage: cargo xtask <ci|fixtures|goldens|perf|models>";
 enum Dispatch {
     Ci,
     Fixtures,
+    Goldens { update: Option<String> },
     Stub(&'static str, &'static str),
     Usage(String),
 }
@@ -21,7 +22,20 @@ fn dispatch(args: &[String]) -> Dispatch {
     match args.first().map(String::as_str) {
         Some("ci") => Dispatch::Ci,
         Some("fixtures") => Dispatch::Fixtures,
-        Some("goldens") => Dispatch::Stub("goldens", "M5.3"),
+        Some("goldens") => match args.get(1).map(String::as_str) {
+            None => Dispatch::Goldens { update: None },
+            Some("--update") => match args.get(2) {
+                Some(target) if !target.starts_with('-') => Dispatch::Goldens {
+                    update: Some(target.clone()),
+                },
+                _ => Dispatch::Usage(
+                    "usage: cargo xtask goldens [--update <suite|name|all>]".to_owned(),
+                ),
+            },
+            Some(_) => {
+                Dispatch::Usage("usage: cargo xtask goldens [--update <suite|name|all>]".to_owned())
+            }
+        },
         Some("perf") => Dispatch::Stub("perf", "M11.1"),
         Some("models") => Dispatch::Stub("models", "M10.3"),
         Some(other) => Dispatch::Usage(format!("unknown subcommand `{other}`\n{USAGE}")),
@@ -49,6 +63,7 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        Dispatch::Goldens { update } => goldens(update.as_deref()),
         Dispatch::Stub(name, task) => {
             println!("`xtask {name}` is not implemented yet (planned in {task})");
             ExitCode::SUCCESS
@@ -56,6 +71,28 @@ fn main() -> ExitCode {
         Dispatch::Usage(msg) => {
             eprintln!("{msg}");
             ExitCode::from(2)
+        }
+    }
+}
+
+/// Runs the golden-image tests, optionally rewriting the selected goldens (SPEC §12.4).
+fn goldens(update: Option<&str>) -> ExitCode {
+    let mut cmd =
+        std::process::Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()));
+    cmd.args(["test", "-p", "lb-imaging", "--locked", "--test", "goldens"]);
+    if let Some(target) = update {
+        cmd.env(lb_testkit::UPDATE_ENV, target);
+        cmd.args(["--", "--nocapture"]);
+        println!(
+            "updating goldens matching `{target}` - inspect target/test-artifacts and log the reason in TASKS.md Decisions"
+        );
+    }
+    match cmd.status() {
+        Ok(status) if status.success() => ExitCode::SUCCESS,
+        Ok(_) => ExitCode::FAILURE,
+        Err(e) => {
+            eprintln!("could not run cargo: {e}");
+            ExitCode::FAILURE
         }
     }
 }
@@ -72,9 +109,18 @@ mod tests {
     fn xtask_dispatches_all_subcommands() {
         assert_eq!(d(&["ci"]), Dispatch::Ci);
         assert_eq!(d(&["fixtures"]), Dispatch::Fixtures);
-        for name in ["goldens", "perf", "models"] {
+        for name in ["perf", "models"] {
             assert!(matches!(d(&[name]), Dispatch::Stub(n, _) if n == name));
         }
+        assert_eq!(d(&["goldens"]), Dispatch::Goldens { update: None });
+        assert_eq!(
+            d(&["goldens", "--update", "golden_x"]),
+            Dispatch::Goldens {
+                update: Some("golden_x".into())
+            }
+        );
+        assert!(matches!(d(&["goldens", "--update"]), Dispatch::Usage(_)));
+        assert!(matches!(d(&["goldens", "bogus"]), Dispatch::Usage(_)));
         assert!(matches!(d(&[]), Dispatch::Usage(_)));
         assert!(matches!(d(&["nope"]), Dispatch::Usage(_)));
     }
