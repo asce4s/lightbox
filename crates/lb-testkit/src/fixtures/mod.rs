@@ -211,5 +211,26 @@ pub fn generate_default() -> Result<PathBuf> {
     Ok(dir)
 }
 
+/// Recursively copies `src` to `dst` (created if needed), preserving file modification times,
+/// so scanner tests can mutate a private copy of the generated fixtures.
+pub fn copy_tree(src: &Path, dst: &Path) -> Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src).with_context(|| format!("reading {}", src.display()))? {
+        let entry = entry?;
+        let (from, to) = (entry.path(), dst.join(entry.file_name()));
+        if entry.file_type()?.is_dir() {
+            copy_tree(&from, &to)?;
+        } else {
+            std::fs::copy(&from, &to)?;
+            let mtime = std::fs::metadata(&from)?.modified()?;
+            std::fs::File::options()
+                .write(true)
+                .open(&to)?
+                .set_modified(mtime)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests;
