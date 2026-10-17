@@ -30,6 +30,12 @@ pub enum CatalogError {
     /// A tag name failed validation.
     #[error(transparent)]
     InvalidTagName(#[from] lb_core::InvalidTagName),
+    /// A person name is empty or too long.
+    #[error(
+        "a person's name must be 1 to {} characters",
+        crate::repo::MAX_PERSON_NAME_CHARS
+    )]
+    InvalidPersonName,
     /// A backup failed its integrity check.
     #[error("catalog backup failed integrity check: {0}")]
     BackupInvalid(String),

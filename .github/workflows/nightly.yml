@@ -1,0 +1,40 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  face-models:
+    name: faces_real_model_smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain from rust-toolchain.toml
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Download models, ONNX Runtime and sample photos
+        run: |
+          mkdir -p "$RUNNER_TEMP/face-models"
+          cargo xtask models --dir "$RUNNER_TEMP/face-models"
+          pip download onnxruntime --no-deps -d "$RUNNER_TEMP/ort"
+          unzip -o -q "$RUNNER_TEMP"/ort/*.whl 'onnxruntime/capi/libonnxruntime.so.*' -d "$RUNNER_TEMP/ort/x"
+          cp "$RUNNER_TEMP"/ort/x/onnxruntime/capi/libonnxruntime.so.* "$RUNNER_TEMP/face-models/libonnxruntime.so"
+          curl -sSL -o "$RUNNER_TEMP/face-models/sample1.jpg" https://raw.githubusercontent.com/opencv/opencv/4.x/samples/data/lena.jpg
+          curl -sSL -o "$RUNNER_TEMP/face-models/sample2.jpg" https://raw.githubusercontent.com/opencv/opencv/4.x/samples/data/messi5.jpg
+
+      - name: Real-model smoke test
+        env:
+          LIGHTBOX_FACE_MODELS: ${{ runner.temp }}/face-models
+        run: cargo test -p lb-faces --features onnx --locked --test real_models -- --ignored --nocapture

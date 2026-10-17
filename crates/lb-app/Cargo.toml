@@ -11,6 +11,7 @@ workspace = true
 [features]
 default = ["faces", "video", "map"]
 faces = ["dep:lb-faces"]
+onnx = ["faces", "lb-faces/onnx"]
 video = ["dep:lb-video"]
 map = ["dep:lb-geo"]
 

@@ -4,6 +4,7 @@
 mod clock;
 mod edit;
 mod error;
+mod face;
 mod ids;
 mod library;
 mod photo;
@@ -15,6 +16,7 @@ pub use clock::{Clock, SystemClock};
 pub use edit::strategies;
 pub use edit::{EditError, EditOp, EditStack, NormRect, RetouchSpot};
 pub use error::ParseEnumError;
+pub use face::{Face, FaceSource, PeopleEntry, PeopleKey, Person};
 pub use ids::{AlbumId, FaceId, FolderId, JobId, PersonId, PhotoId, RootId, TagId};
 pub use library::{
     Album, Folder, InvalidTagName, MAX_TAG_NAME_CHARS, Root, RootMode, Tag, TagUsage,

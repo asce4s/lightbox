@@ -11,6 +11,8 @@ mod edits;
 mod error;
 mod events;
 mod export;
+#[cfg(feature = "faces")]
+mod faces;
 mod files;
 mod history;
 mod import;
@@ -47,6 +49,8 @@ pub use export::{
     CollisionPolicy, ExportFormat, ExportHandle, ExportOptions, ExportReport, ExportService,
     ExportSize, ExportedFile, MetadataPolicy,
 };
+#[cfg(feature = "faces")]
+pub use faces::{FaceScanReport, FaceService, MAX_RECLUSTER_FACES};
 pub use files::{DeleteReport, MoveReport};
 pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
 pub use import::{

@@ -5,12 +5,13 @@ use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 
 /// The schema version a freshly migrated database reports in `PRAGMA user_version`.
-pub const LATEST_SCHEMA_VERSION: u32 = 2;
+pub const LATEST_SCHEMA_VERSION: u32 = 3;
 
 fn migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(include_str!("../migrations/V1__init.sql")),
         M::up(include_str!("../migrations/V2__fts_contentless_delete.sql")),
+        M::up(include_str!("../migrations/V3__face_scans.sql")),
     ])
 }
 

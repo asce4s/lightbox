@@ -3,6 +3,7 @@
 
 mod ci;
 mod deps;
+mod models;
 
 use std::process::ExitCode;
 
@@ -14,6 +15,7 @@ enum Dispatch {
     Ci,
     Fixtures,
     Goldens { update: Option<String> },
+    Models { dir: Option<String> },
     Stub(&'static str, &'static str),
     Usage(String),
 }
@@ -37,7 +39,16 @@ fn dispatch(args: &[String]) -> Dispatch {
             }
         },
         Some("perf") => Dispatch::Stub("perf", "M11.1"),
-        Some("models") => Dispatch::Stub("models", "M10.3"),
+        Some("models") => match args.get(1).map(String::as_str) {
+            None => Dispatch::Models { dir: None },
+            Some("--dir") => match args.get(2) {
+                Some(dir) => Dispatch::Models {
+                    dir: Some(dir.clone()),
+                },
+                None => Dispatch::Usage("usage: cargo xtask models [--dir <path>]".to_owned()),
+            },
+            Some(_) => Dispatch::Usage("usage: cargo xtask models [--dir <path>]".to_owned()),
+        },
         Some(other) => Dispatch::Usage(format!("unknown subcommand `{other}`\n{USAGE}")),
         None => Dispatch::Usage(USAGE.to_owned()),
     }
@@ -64,6 +75,13 @@ fn main() -> ExitCode {
             }
         },
         Dispatch::Goldens { update } => goldens(update.as_deref()),
+        Dispatch::Models { dir } => match models::run(dir.as_deref()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("model download failed: {e:#}");
+                ExitCode::FAILURE
+            }
+        },
         Dispatch::Stub(name, task) => {
             println!("`xtask {name}` is not implemented yet (planned in {task})");
             ExitCode::SUCCESS
@@ -110,9 +128,15 @@ mod tests {
     fn xtask_dispatches_all_subcommands() {
         assert_eq!(d(&["ci"]), Dispatch::Ci);
         assert_eq!(d(&["fixtures"]), Dispatch::Fixtures);
-        for name in ["perf", "models"] {
-            assert!(matches!(d(&[name]), Dispatch::Stub(n, _) if n == name));
-        }
+        assert!(matches!(d(&["perf"]), Dispatch::Stub("perf", _)));
+        assert_eq!(d(&["models"]), Dispatch::Models { dir: None });
+        assert_eq!(
+            d(&["models", "--dir", "/m"]),
+            Dispatch::Models {
+                dir: Some("/m".into())
+            }
+        );
+        assert!(matches!(d(&["models", "--dir"]), Dispatch::Usage(_)));
         assert_eq!(d(&["goldens"]), Dispatch::Goldens { update: None });
         assert_eq!(
             d(&["goldens", "--update", "golden_x"]),

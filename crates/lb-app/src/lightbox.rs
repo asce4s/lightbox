@@ -31,6 +31,10 @@ pub struct LightboxOptions {
     /// Source of map tiles; `None` fetches from the URL in the settings. Tests inject a local one.
     #[cfg(feature = "map")]
     pub tile_provider: Option<Arc<dyn lb_geo::TileProvider>>,
+    /// Face detector and embedder; `None` loads the models from the models directory. Tests
+    /// inject the mocks.
+    #[cfg(feature = "faces")]
+    pub face_pipeline: Option<Arc<lb_faces::FacePipeline>>,
 }
 
 impl Default for LightboxOptions {
@@ -42,6 +46,8 @@ impl Default for LightboxOptions {
             opener: Arc::new(SystemOpener),
             #[cfg(feature = "map")]
             tile_provider: None,
+            #[cfg(feature = "faces")]
+            face_pipeline: None,
         }
     }
 }
@@ -62,6 +68,8 @@ pub(crate) struct Inner {
     pub(crate) watcher: Mutex<Option<WatchService>>,
     #[cfg(feature = "map")]
     pub(crate) map: crate::map::MapState,
+    #[cfg(feature = "faces")]
+    pub(crate) faces: crate::faces::FaceState,
 }
 
 /// An open Lightbox library. Cheap to clone; all clones share the same state.
@@ -152,6 +160,8 @@ impl Lightbox {
                 watcher: Mutex::new(None),
                 #[cfg(feature = "map")]
                 map: crate::map::MapState::new(options.tile_provider),
+                #[cfg(feature = "faces")]
+                faces: crate::faces::FaceState::new(options.face_pipeline),
             }),
         })
     }

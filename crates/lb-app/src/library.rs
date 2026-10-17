@@ -115,6 +115,8 @@ impl LibraryService {
             &mut |e| lb.emit(scan_event_to_app(e)),
         )?;
         self.lb.emit(AppEvent::FoldersChanged);
+        #[cfg(feature = "faces")]
+        crate::faces::after_scan(&self.lb);
         Ok(summary)
     }
 
@@ -159,6 +161,8 @@ impl LibraryService {
         let service = WatchService::start(self.lb.inner.folders.clone(), config, move |e| {
             lb.emit(scan_event_to_app(e));
             lb.emit(AppEvent::FoldersChanged);
+            #[cfg(feature = "faces")]
+            crate::faces::after_scan(&lb);
         })?;
         *slot = Some(service);
         Ok(())
@@ -184,6 +188,8 @@ impl LibraryService {
             });
         }
         self.lb.emit(AppEvent::FoldersChanged);
+        #[cfg(feature = "faces")]
+        crate::faces::after_scan(&self.lb);
         if let Err(e) = self.sync_watcher() {
             tracing::warn!(error = %e, "could not resync file watcher");
         }
