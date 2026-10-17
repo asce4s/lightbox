@@ -8,9 +8,16 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+## HEIC/HEIF/AVIF via libheif, when the library is installed at build time.
+heif = []
+## Camera RAW: decode the embedded JPEG preview (full demosaic is out of scope).
+raw = []
+
 [dependencies]
 lb-core = { path = "../lb-core" }
 blake3 = { workspace = true }
+moxcms = { workspace = true }
 chrono = { workspace = true }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "tiff", "bmp"] }
 jpeg-decoder = { workspace = true }

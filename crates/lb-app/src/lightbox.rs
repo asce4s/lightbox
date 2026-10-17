@@ -127,6 +127,8 @@ impl Lightbox {
         let thumbs = ThumbCache::open(&paths.cache)?;
         #[allow(unused_mut)]
         let mut scan_options = ScanOptions::default();
+        scan_options.caps.heif = lb_media::heif_decoder_available();
+        scan_options.caps.raw = lb_media::raw_decoder_available();
         #[cfg(feature = "video")]
         {
             scan_options.caps.video = true;
@@ -141,6 +143,12 @@ impl Lightbox {
         if options.spawn_event_ticker {
             bus.spawn_ticker()?;
         }
+        let xmp_catalog = catalog.clone();
+        bus.set_tap(move |event| {
+            if let AppEvent::PhotosChanged { ids } = event {
+                crate::xmp::sync_after_change(&xmp_catalog, ids);
+            }
+        });
         let history = HistoryService::new(catalog.clone(), bus.clone());
         tracing::info!(data = %paths.data.display(), "library opened");
         Ok(Self {

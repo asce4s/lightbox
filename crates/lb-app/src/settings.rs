@@ -188,6 +188,14 @@ pub struct VideoSettings {
     pub ffmpeg_path: Option<String>,
 }
 
+/// XMP sidecar write-back (SPEC §6.7.6).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct XmpSettings {
+    /// Write `{file}.xmp` next to a photo whenever its rating, tags or caption change.
+    pub write_sidecars: bool,
+}
+
 /// Every setting with its default. Sections are stored under their field name.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Settings {
@@ -209,10 +217,12 @@ pub struct Settings {
     pub map: MapSettings,
     /// Video tooling.
     pub video: VideoSettings,
+    /// XMP sidecars.
+    pub xmp: XmpSettings,
 }
 
 /// The stored section names, in the order of [`Settings`].
-pub const SETTINGS_KEYS: [&str; 9] = [
+pub const SETTINGS_KEYS: [&str; 10] = [
     "theme",
     "grid",
     "library",
@@ -222,6 +232,7 @@ pub const SETTINGS_KEYS: [&str; 9] = [
     "faces",
     "map",
     "video",
+    "xmp",
 ];
 
 impl Settings {
@@ -236,6 +247,7 @@ impl Settings {
             "faces" => serde_json::to_string(&self.faces),
             "map" => serde_json::to_string(&self.map),
             "video" => serde_json::to_string(&self.video),
+            "xmp" => serde_json::to_string(&self.xmp),
             _ => return None,
         })
     }
@@ -260,6 +272,7 @@ impl Settings {
             "faces" => parse(json, &mut self.faces),
             "map" => parse(json, &mut self.map),
             "video" => parse(json, &mut self.video),
+            "xmp" => parse(json, &mut self.xmp),
             _ => true,
         }
     }

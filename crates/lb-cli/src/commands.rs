@@ -67,8 +67,15 @@ enum Command {
     Dupes(DupesArgs),
     /// Build a collage JPEG from photos.
     Collage(CollageArgs),
+    /// Make an MP4 slideshow movie from photos (needs ffmpeg).
+    Movie(MovieArgs),
     /// Import star, caption, tags, albums, edits and faces from `.picasa.ini` files.
     PicasaImport(PicasaArgs),
+    /// XMP sidecar write-back for stars, tags and captions.
+    Xmp {
+        #[command(subcommand)]
+        action: XmpCmd,
+    },
     /// Thumbnail cache maintenance.
     Thumbs {
         #[command(subcommand)]
@@ -136,6 +143,20 @@ enum TagCmd {
     Remove {
         /// Tag name.
         tag: String,
+        /// Photo ids.
+        #[arg(required = true)]
+        ids: Vec<i64>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum XmpCmd {
+    /// Keep a `{file}.xmp` sidecar up to date for every changed photo.
+    On,
+    /// Stop writing sidecars.
+    Off,
+    /// Write the sidecars of these photos now.
+    Write {
         /// Photo ids.
         #[arg(required = true)]
         ids: Vec<i64>,
@@ -233,6 +254,28 @@ struct CollageArgs {
     /// Seed of the pile's randomness.
     #[arg(long, default_value_t = 0)]
     seed: u64,
+}
+
+#[derive(Debug, Args)]
+struct MovieArgs {
+    /// Photo ids, shown in this order.
+    #[arg(required = true)]
+    ids: Vec<i64>,
+    /// Output MP4 file.
+    #[arg(long)]
+    out: PathBuf,
+    /// Seconds each photo is shown.
+    #[arg(long, default_value_t = 3.0)]
+    seconds: f64,
+    /// Frames per second.
+    #[arg(long, default_value_t = 30)]
+    fps: u32,
+    /// Movie size as `WxH` (at most 1920x1080).
+    #[arg(long, default_value = "1920x1080")]
+    size: String,
+    /// Audio file to play under the movie.
+    #[arg(long)]
+    audio: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
@@ -399,12 +442,14 @@ pub fn run(cli: Cli) -> CliResult {
             )
         }
         Command::Tag { action } => tag(&lb, action),
+        Command::Xmp { action } => xmp(&lb, action),
         Command::Album { action } => album(&lb, action),
         Command::Edit { action } => edit(&lb, action),
         Command::Render(a) => render(&lb, &a),
         Command::Export(a) => export(&lb, &a),
         Command::Dupes(a) => dupes(&lb, &a),
         Command::Collage(a) => collage(&lb, &a),
+        Command::Movie(a) => movie(&lb, &a),
         Command::PicasaImport(a) => picasa_import(&lb, &a),
         Command::Thumbs { action } => {
             let ThumbsCmd::Warm { size } = action;
@@ -559,6 +604,36 @@ fn tag(lb: &Lightbox, action: TagCmd) -> CliResult {
     )
 }
 
+fn xmp(lb: &Lightbox, action: XmpCmd) -> CliResult {
+    match action {
+        XmpCmd::On | XmpCmd::Off => {
+            let on = matches!(action, XmpCmd::On);
+            lb.settings().update(|s| s.xmp.write_sidecars = on)?;
+            out(
+                json!({ "write_sidecars": on }),
+                format!("XMP sidecars are {}", if on { "on" } else { "off" }),
+            )
+        }
+        XmpCmd::Write { ids } => {
+            let ids = photo_ids(lb, &ids)?;
+            let report = lb.xmp().write(&ids)?;
+            let failed: Vec<Value> = report
+                .failed
+                .iter()
+                .map(|(id, why)| json!({ "id": id.get(), "reason": why }))
+                .collect();
+            out(
+                json!({ "written": report.written, "failed": failed }),
+                format!(
+                    "wrote {} sidecar(s), {} failed",
+                    report.written.len(),
+                    report.failed.len()
+                ),
+            )
+        }
+    }
+}
+
 fn album(lb: &Lightbox, action: AlbumCmd) -> CliResult {
     match action {
         AlbumCmd::Create { name } => {
@@ -670,6 +745,41 @@ fn collage(lb: &Lightbox, a: &CollageArgs) -> CliResult {
             "height": height,
         }),
         format!("saved {} ({width}x{height})", made.path.display()),
+    )
+}
+
+fn movie(lb: &Lightbox, a: &MovieArgs) -> CliResult {
+    let size =
+        lb_app::CollageSize::parse(&a.size).ok_or_else(|| user("size must look like 1920x1080"))?;
+    let (width, height) = size.dimensions();
+    if !a.seconds.is_finite() {
+        return Err(user("seconds must be a number"));
+    }
+    let ids = photo_ids(lb, &a.ids)?;
+    let settings = lb_app::MovieSettings {
+        fps: a.fps,
+        width,
+        height,
+        seconds_per_photo: a.seconds,
+        audio: a.audio.clone(),
+    };
+    let report = lb
+        .movie()
+        .render(&ids, &settings, &a.out, &|| false, &|_, _| {})?;
+    let skipped: Vec<i64> = report.skipped.iter().map(|i| i.get()).collect();
+    out(
+        json!({
+            "path": report.path,
+            "photos": report.photos,
+            "skipped": skipped,
+            "duration_secs": report.duration_secs,
+        }),
+        format!(
+            "saved {} ({} photos, {:.1} s)",
+            a.out.display(),
+            report.photos,
+            report.duration_secs
+        ),
     )
 }
 

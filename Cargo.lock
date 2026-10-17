@@ -4272,6 +4272,7 @@ dependencies = [
  "kamadak-exif",
  "lb-core",
  "lb-testkit",
+ "moxcms",
  "proptest",
  "tempfile",
  "thiserror 2.0.21",

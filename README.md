@@ -58,7 +58,7 @@ Rust 1.99 (pinned by `rust-toolchain.toml`; `rustup` installs it on first use).
 
 | System | Install |
 |---|---|
-| Debian / Ubuntu | `sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (add `ffmpeg` for video) |
+| Debian / Ubuntu | `sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (add `ffmpeg` for video, `libheif-dev` and `libheif-plugin-libde265` for the `heif` feature) |
 | Fedora | `sudo dnf install libxkbcommon-devel libxkbcommon-x11-devel wayland-devel vulkan-loader-devel libxcb-devel fontconfig-devel freetype-devel openssl-devel pkgconf clang` |
 | macOS | Xcode command line tools (`xcode-select --install`); `brew install ffmpeg` for video |
 | Windows | Visual Studio Build Tools (MSVC, Windows SDK); `winget install ffmpeg` for video |
@@ -141,12 +141,14 @@ lightbox-cli query "beach rating:>=3 year:2021"
 lightbox-cli star 12 13 14
 lightbox-cli rate 12 5
 lightbox-cli tag add holiday 12 13
+lightbox-cli xmp on                       # keep {file}.xmp sidecars current (also: xmp off, xmp write <ids>)
 lightbox-cli album create "Summer"        # also: album add <album-id> <photo-ids>, album list
 lightbox-cli edit push 12 '{"op":"sepia"}'  # also: edit show, undo, revert
 lightbox-cli render 12 preview.png --max-edge 1280
 lightbox-cli export 12 13 --to ~/Exports --long-edge 2048 --quality 85
 lightbox-cli dupes                        # exact and similar photos
 lightbox-cli collage grid 12 13 14 --out collage.jpg --size 1920x1080
+lightbox-cli movie 12 13 14 --out show.mp4 --seconds 3 --fps 30   # slideshow MP4 (needs ffmpeg)
 lightbox-cli thumbs warm --size M
 lightbox-cli picasa-import ~/Pictures     # legacy .picasa.ini metadata (--overwrite, --dry-run)
 lightbox-cli doctor                       # environment report and catalog integrity check

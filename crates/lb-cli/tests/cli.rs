@@ -545,3 +545,83 @@ fn cli_picasa_import_e2e() {
         .assert()
         .code(1);
 }
+
+#[test]
+fn cli_movie_e2e() {
+    if !["ffmpeg", "ffprobe"].iter().all(|tool| {
+        std::process::Command::new(tool)
+            .arg("-version")
+            .output()
+            .is_ok_and(|o| o.status.success())
+    }) {
+        eprintln!("ffmpeg not found; skipping");
+        return;
+    }
+    let env = Env::empty();
+    for (i, n) in ["a", "b"].iter().enumerate() {
+        write_jpeg(&env.photos.path().join(format!("{n}.jpg")), i as u8);
+    }
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+    let ids = env.all();
+    let out_dir = tempfile::tempdir().unwrap();
+    let out = out_dir.path().join("m.mp4");
+    let (a, b) = (s(ids[0]), s(ids[1]));
+    let r = env.json(&[
+        "movie",
+        &a,
+        &b,
+        "--out",
+        out.to_str().unwrap(),
+        "--size",
+        "320x180",
+        "--fps",
+        "10",
+        "--seconds",
+        "0.5",
+    ]);
+    assert_eq!(r["photos"], 2);
+    assert!(std::fs::metadata(&out).unwrap().len() > 0);
+
+    env.cmd(&["movie", &a, "--out", out.to_str().unwrap(), "--size", "big"])
+        .assert()
+        .code(1);
+    env.cmd(&["movie", "99999", "--out", out.to_str().unwrap()])
+        .assert()
+        .code(1);
+}
+
+#[test]
+fn cli_xmp_e2e() {
+    let env = Env::empty();
+    write_jpeg(&env.photos.path().join("a.jpg"), 1);
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+    let id = s(env.all()[0]);
+    let sidecar = env.photos.path().join("a.jpg.xmp");
+
+    env.json(&["rate", &id, "2"]);
+    assert!(!sidecar.exists(), "off by default");
+
+    assert_eq!(env.json(&["xmp", "on"])["write_sidecars"], true);
+    env.json(&["rate", &id, "5"]);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"5\"")
+    );
+
+    env.json(&["xmp", "off"]);
+    env.json(&["rate", &id, "1"]);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"5\"")
+    );
+    let r = env.json(&["xmp", "write", &id]);
+    assert_eq!(r["written"].as_array().unwrap().len(), 1);
+    assert!(
+        std::fs::read_to_string(&sidecar)
+            .unwrap()
+            .contains("xmp:Rating=\"1\"")
+    );
+    env.cmd(&["xmp", "write", "99999"]).assert().code(1);
+}

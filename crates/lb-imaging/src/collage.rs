@@ -223,6 +223,30 @@ fn mosaic_height(rows: &[MosaicRow], gap: f32) -> f32 {
     rows.iter().map(|r| r.height).sum::<f32>() + gap * (rows.len() as f32 + 1.0)
 }
 
+/// Rounding each row on its own can add almost half a pixel per row. Return
+/// those pixels from the tallest rows so the stack still fits `canvas`.
+fn fit_row_heights(heights: &mut [i32], gap: i32, canvas: i32) {
+    if heights.is_empty() {
+        return;
+    }
+    let between = gap.saturating_mul((heights.len() as i32 - 1).max(0));
+    let budget = canvas.saturating_sub(between);
+    let mut sum: i32 = heights.iter().sum();
+    while sum > budget {
+        let Some(ix) = heights
+            .iter()
+            .enumerate()
+            .filter(|(_, height)| **height > 1)
+            .max_by_key(|(_, height)| *height)
+            .map(|(ix, _)| ix)
+        else {
+            break;
+        };
+        heights[ix] -= 1;
+        sum -= 1;
+    }
+}
+
 /// Rows for the largest target height whose stack still fits `ch`; `None` when even the
 /// smallest rows do not fit.
 fn fit_mosaic_rows(aspects: &[f32], cw: f32, ch: f32, gap: f32) -> Option<Vec<MosaicRow>> {
@@ -269,11 +293,12 @@ fn mosaic(spec: &CollageSpec, aspects: &[f32]) -> Vec<Placement> {
         scale = ((ch - gap * (rows.len() as f32 + 1.0)) / heights).max(0.0);
     }
     let gap_px = gap as i32;
-    let heights: Vec<i32> = rows
+    let mut heights: Vec<i32> = rows
         .iter()
         .map(|r| ((r.height * scale).round() as i32).max(1))
         .collect();
-    let used = heights.iter().sum::<i32>() + gap_px * (rows.len() as i32 - 1);
+    fit_row_heights(&mut heights, gap_px, spec.height as i32);
+    let used = heights.iter().sum::<i32>() + gap_px * (rows.len() as i32 - 1).max(0);
     let mut y = (spec.height as i32 - used).max(0) / 2;
     let mut out = Vec::with_capacity(aspects.len());
     for (row, &h) in rows.iter().zip(&heights) {
