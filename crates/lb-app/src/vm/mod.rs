@@ -9,6 +9,7 @@ mod grid;
 mod library;
 mod redeye;
 mod sidebar;
+mod slideshow;
 mod viewer;
 
 pub use crop::{AspectPreset, CropHandle, CropVm};
@@ -20,4 +21,7 @@ pub use grid::{GAP, GridLayout, GridRow, HEADER_HEIGHT, ZOOM_RANGE, columns_for}
 pub use library::{DEFAULT_ZOOM, LibraryVm, Modifiers, NavKey, SEARCH_DEBOUNCE};
 pub use redeye::{DisplayRect, RedEyeVm};
 pub use sidebar::{SidebarItem, SidebarKey, SidebarSection, SidebarVm};
+pub use slideshow::{
+    CONTROLS_IDLE, DURATION_RANGE, PRELOAD_AHEAD, SlideshowOptions, SlideshowState,
+};
 pub use viewer::{ViewerVm, ZOOM_LIMITS, ZoomMode};

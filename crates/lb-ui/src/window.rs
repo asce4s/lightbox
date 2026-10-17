@@ -13,7 +13,7 @@ use lb_app::vm::{
     ConfirmVm, ExportDialogVm, LibraryVm, Modifiers, NavKey, RenameVm, SidebarKey, SidebarVm,
     ZOOM_RANGE,
 };
-use lb_app::{AppEvent, EventReceiver, Lightbox, ThumbSize};
+use lb_app::{AppEvent, EventReceiver, Lightbox, ThemeChoice, ThumbSize};
 use lb_core::{AlbumId, PhotoId};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -37,6 +37,8 @@ pub enum Route {
     Viewer,
     /// Editor.
     Editor,
+    /// Full-window slideshow.
+    Slideshow,
 }
 
 /// A modal or popup drawn above the library.
@@ -101,7 +103,15 @@ pub struct LightboxWindow {
     pub(crate) viewer: Option<crate::viewer::ViewerState>,
     pub(crate) editor: Option<crate::editor::EditorState>,
     pub(crate) viewport: (f32, f32),
+    pub(crate) theme: ThemeChoice,
+    pub(crate) slideshow: Option<lb_app::vm::SlideshowState>,
+    pub(crate) slideshow_slider: Entity<SliderState>,
+    pub(crate) slideshow_fullscreen: bool,
+    pub(crate) slideshow_controls_shown: bool,
     last_anchor_row: Option<usize>,
+    pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
+    pub(crate) band: Option<crate::band::BandDrag>,
+    pub(crate) grid_bounds: crate::band::GridBounds,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -109,6 +119,8 @@ impl LightboxWindow {
     /// Builds the window state inside `window`. `ticker` starts the background loop that drains
     /// application events; tests pass `false` and call [`LightboxWindow::pump`] themselves.
     pub fn new(app: Lightbox, ticker: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let theme = app.settings().load().map(|s| s.theme).unwrap_or_default();
+        apply_theme(theme, Some(window), cx);
         let mut vm = LibraryVm::new(&app);
         if let Err(e) = vm.refresh() {
             tracing::error!(error = %e, "initial query failed");
@@ -143,6 +155,8 @@ impl LightboxWindow {
                 cx.notify();
             }
         }));
+        let slideshow_slider = crate::slideshow::duration_slider(3, cx);
+        subscriptions.push(Self::slideshow_subscription(&slideshow_slider, cx));
         window.focus(&focus, cx);
         let events = app.events();
         let this = Self {
@@ -166,7 +180,15 @@ impl LightboxWindow {
             viewer: None,
             editor: None,
             viewport: TEST_WINDOW_SIZE,
+            theme,
+            slideshow: None,
+            slideshow_slider,
+            slideshow_fullscreen: false,
+            slideshow_controls_shown: false,
             last_anchor_row: None,
+            timeline_drag: None,
+            band: None,
+            grid_bounds: crate::band::GridBounds::default(),
             _subscriptions: subscriptions,
         };
         if ticker {
@@ -224,9 +246,30 @@ impl LightboxWindow {
         &self.overlay
     }
 
+    /// The chosen colour scheme.
+    pub fn theme(&self) -> ThemeChoice {
+        self.theme
+    }
+
+    /// Switches System, Light and Dark in turn and stores the choice.
+    pub fn cycle_theme(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let next = match self.theme {
+            ThemeChoice::System => ThemeChoice::Light,
+            ThemeChoice::Light => ThemeChoice::Dark,
+            ThemeChoice::Dark => ThemeChoice::System,
+        };
+        self.theme = next;
+        apply_theme(next, Some(window), cx);
+        let result = self.app.settings().set_theme(next);
+        self.report(result, cx);
+        cx.notify();
+    }
+
     /// Which screen is showing.
     pub fn route(&self) -> Route {
-        if self.editor.is_some() {
+        if self.slideshow.is_some() {
+            Route::Slideshow
+        } else if self.editor.is_some() {
             Route::Editor
         } else if self.viewer.is_some() {
             Route::Viewer
@@ -253,6 +296,7 @@ impl LightboxWindow {
     /// Drains application events and applies a due search. Called by the ticker and by tests.
     pub fn pump(&mut self, cx: &mut Context<Self>) {
         let mut changed = self.vm.tick();
+        changed |= self.tick_slideshow();
         let mut refresh_sidebar = false;
         let mut viewer_stale = false;
         let mut editor_stale = false;
@@ -301,6 +345,18 @@ impl LightboxWindow {
                 AppEvent::JobFinished { .. } => {
                     self.jobs = self.jobs.saturating_sub(1);
                     changed = true;
+                }
+                AppEvent::SettingsChanged { key } => {
+                    if let Ok(settings) = self.app.settings().load() {
+                        if key == "theme" && settings.theme != self.theme {
+                            self.theme = settings.theme;
+                            apply_theme(settings.theme, None, cx);
+                        }
+                        if key == "grid" || key == "library" {
+                            self.vm.apply_settings(&settings);
+                        }
+                        changed = true;
+                    }
                 }
                 AppEvent::AlbumsChanged
                 | AppEvent::FoldersChanged
@@ -509,6 +565,16 @@ impl LightboxWindow {
 impl Focusable for LightboxWindow {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {
         self.focus.clone()
+    }
+}
+
+/// Applies a colour scheme to the whole application.
+pub(crate) fn apply_theme(choice: ThemeChoice, window: Option<&mut Window>, cx: &mut App) {
+    use gpui_kit::component::{Theme, ThemeMode};
+    match choice {
+        ThemeChoice::System => Theme::sync_system_appearance(window, cx),
+        ThemeChoice::Light => Theme::change(ThemeMode::Light, window, cx),
+        ThemeChoice::Dark => Theme::change(ThemeMode::Dark, window, cx),
     }
 }
 

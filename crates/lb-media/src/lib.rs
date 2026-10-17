@@ -8,6 +8,7 @@ mod extract;
 mod format;
 mod hash;
 mod metadata;
+mod phash;
 mod probe;
 mod resize;
 mod taken_at;
@@ -21,6 +22,7 @@ pub use format::{
 };
 pub use hash::{QUICK_KEY_SAMPLE, content_hash, quick_key, quick_key_of_bytes};
 pub use metadata::{ExifData, read_exif};
+pub use phash::{BkTree, hamming, phash, phash_file};
 pub use probe::{Probe, probe};
 pub use resize::{fit_within, resize_exact};
 pub use taken_at::{DateSources, TakenAt, filename_date, mtime_to_naive_local, resolve_taken_at};

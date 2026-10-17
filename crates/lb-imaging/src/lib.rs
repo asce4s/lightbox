@@ -3,6 +3,7 @@
 #![allow(clippy::chunks_exact_to_as_chunks)]
 
 pub mod blur;
+pub mod collage;
 pub mod color;
 pub mod convert;
 pub mod ops;

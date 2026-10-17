@@ -17,7 +17,7 @@ mod tests;
 
 pub use edits::EditRecord;
 pub use folders::NewFolder;
-pub use photos::{PhotoUpsert, UpsertOutcome};
+pub use photos::{PhotoHashes, PhotoUpsert, UpsertOutcome};
 pub use query::{PhotoQuery, QueryRow, QuerySource, SqlFragment};
 pub use scan::IndexedFile;
 

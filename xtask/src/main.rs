@@ -79,7 +79,8 @@ fn main() -> ExitCode {
 fn goldens(update: Option<&str>) -> ExitCode {
     let mut cmd =
         std::process::Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()));
-    cmd.args(["test", "-p", "lb-imaging", "--locked", "--test", "goldens"]);
+    cmd.args(["test", "-p", "lb-imaging", "--locked"]);
+    cmd.args(["--test", "goldens", "--test", "collage"]);
     if let Some(target) = update {
         cmd.env(lb_testkit::UPDATE_ENV, target);
         cmd.args(["--", "--nocapture"]);

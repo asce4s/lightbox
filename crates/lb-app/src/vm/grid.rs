@@ -119,6 +119,32 @@ impl GridLayout {
         first.min(self.rows.len())..end.min(self.rows.len())
     }
 
+    /// Cells `(group, index)` whose square touches the rectangle with corners `(x0, y0)` and
+    /// `(x1, y1)`, given in content coordinates (origin at the top-left cell, y growing down).
+    /// Used by rubber-band selection (SPEC §9.3).
+    pub fn cells_in_rect(&self, x0: f32, y0: f32, x1: f32, y1: f32) -> Vec<(usize, usize)> {
+        let (left, right) = (x0.min(x1), x0.max(x1));
+        let (top, bottom) = (y0.min(y1), y0.max(y1));
+        let pitch = self.cell + GAP;
+        let mut hits = Vec::new();
+        for (i, row) in self.rows.iter().enumerate() {
+            let GridRow::Cells { group, start, len } = *row else {
+                continue;
+            };
+            let row_top = self.tops[i];
+            if row_top > bottom || row_top + self.cell < top {
+                continue;
+            }
+            for col in 0..len {
+                let cell_left = col as f32 * pitch;
+                if cell_left <= right && cell_left + self.cell >= left {
+                    hits.push((group, start + col));
+                }
+            }
+        }
+        hits
+    }
+
     /// The row holding cell `index` of `group`.
     pub fn row_of(&self, group: usize, index: usize) -> Option<usize> {
         self.rows.iter().position(|r| {

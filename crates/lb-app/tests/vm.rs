@@ -504,3 +504,57 @@ fn vm_export_dialog_validation_and_run() {
             .any(|e| e.field == ExportField::Selection)
     );
 }
+
+#[test]
+fn vm_band_selection_geometry() {
+    let (_t, mut vm) = grid();
+    vm.set_viewport_width(1000.0);
+    let (cell, cols) = (vm.layout().cell, vm.layout().columns);
+    assert!(cols >= 2);
+    let pitch = cell + lb_app::vm::GAP;
+    let first_row = vm
+        .layout()
+        .rows
+        .iter()
+        .position(|r| matches!(r, lb_app::vm::GridRow::Cells { .. }))
+        .unwrap();
+    let top = vm.layout().row_top(first_row);
+
+    vm.begin_band(false);
+    vm.update_band(2.0, top + 2.0, pitch + 2.0, top + cell - 2.0);
+    assert_eq!(vm.selection().ids.len(), 2, "two cells of the first row");
+    vm.update_band(2.0, top + 2.0, 4.0, top + 4.0);
+    assert_eq!(vm.selection().ids.len(), 1, "shrinking the band deselects");
+    vm.update_band(cell + 1.0, top + 1.0, cell + 3.0, top + 3.0);
+    assert!(
+        vm.selection().ids.is_empty(),
+        "the gap between cells holds none"
+    );
+    vm.end_band();
+    assert!(!vm.band_active());
+
+    let all_height = vm.layout().total_height();
+    vm.begin_band(false);
+    vm.update_band(-50.0, -50.0, 5000.0, all_height + 50.0);
+    assert_eq!(
+        vm.selection().ids.len(),
+        vm.order().len(),
+        "everything touched"
+    );
+    vm.end_band();
+
+    vm.click(vm.order()[0], lb_app::vm::Modifiers::default());
+    vm.begin_band(true);
+    vm.update_band(pitch + 1.0, top + 1.0, pitch + 2.0, top + 2.0);
+    assert_eq!(
+        vm.selection().ids.len(),
+        2,
+        "additive keeps the old selection"
+    );
+    vm.end_band();
+    vm.begin_band(false);
+    assert!(
+        vm.selection().ids.is_empty(),
+        "plain band starts from nothing"
+    );
+}

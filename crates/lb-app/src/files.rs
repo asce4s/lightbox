@@ -133,6 +133,17 @@ impl PhotoService {
         id: PhotoId,
         new_name: &str,
     ) -> Result<(Photo, String, std::path::PathBuf)> {
+        self.plan_rename_allowing(id, new_name, &HashSet::new())
+    }
+
+    /// Like `plan_rename`, but an existing target that is one of `vacating` is not a clash
+    /// because that file is being renamed away in the same batch.
+    pub(crate) fn plan_rename_allowing(
+        &self,
+        id: PhotoId,
+        new_name: &str,
+        vacating: &HashSet<std::path::PathBuf>,
+    ) -> Result<(Photo, String, std::path::PathBuf)> {
         let photo = self.existing(id)?;
         let new_name = new_name.trim();
         validate_file_name(new_name)?;
@@ -152,7 +163,7 @@ impl PhotoService {
             return Err(invalid(format!("\".{ext}\" is not a supported file type")));
         }
         let target = photo.path.with_file_name(&name);
-        if target != photo.path && target.exists() {
+        if target != photo.path && target.exists() && !vacating.contains(&target) {
             return Err(AppError::AlreadyExists(target));
         }
         Ok((photo, name, target))

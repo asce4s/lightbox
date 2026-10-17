@@ -34,6 +34,7 @@ ids! {
     NEW_ALBUM_BUTTON = "new-album",
     GRID = "grid",
     GRID_EMPTY = "grid-empty",
+    GRID_BAND = "grid-band",
     INFO_PANEL = "info-panel",
     ZOOM_SLIDER = "zoom-slider",
     STATUS_BAR = "status-bar",
@@ -92,6 +93,7 @@ ids! {
     TAG_OK = "tag-ok",
     TAG_CANCEL = "tag-cancel",
     TOAST = "toast",
+    THEME_TOGGLE = "theme-toggle",
     VIEWER_BACK = "viewer-back",
     VIEWER_EDIT = "viewer-edit",
     VIEWER_INFO = "viewer-info",
@@ -122,6 +124,20 @@ ids! {
     EFFECT_PANEL = "effect-panel",
     EFFECT_APPLY = "effect-apply",
     EFFECT_CANCEL = "effect-cancel",
+    SLIDESHOW_BUTTON = "slideshow-button",
+    SLIDESHOW = "slideshow",
+    SLIDESHOW_CAPTION = "slideshow-caption",
+    SLIDESHOW_CONTROLS = "slideshow-controls",
+    SLIDESHOW_PREV = "slideshow-prev",
+    SLIDESHOW_PLAY = "slideshow-play",
+    SLIDESHOW_NEXT = "slideshow-next",
+    SLIDESHOW_DURATION = "slideshow-duration",
+    SLIDESHOW_SHUFFLE = "slideshow-shuffle",
+    SLIDESHOW_LOOP = "slideshow-loop",
+    SLIDESHOW_CAPTIONS = "slideshow-captions",
+    SLIDESHOW_EXIT = "slideshow-exit",
+    TIMELINE = "timeline",
+    TIMELINE_CLEAR = "timeline-clear",
 }
 
 fn named(name: &'static str, n: u64) -> ElementId {
@@ -175,6 +191,11 @@ pub fn filmstrip_cell(id: PhotoId) -> ElementId {
 /// An aspect preset button of the crop tool (`free`, `original`, `1x1`, ...).
 pub fn crop_aspect(key: &str) -> ElementId {
     ElementId::Name(format!("crop-aspect-{key}").into())
+}
+
+/// A month segment of the timeline scrubber.
+pub fn timeline_month(index: usize) -> ElementId {
+    named("timeline-month", index as u64)
 }
 
 /// A resize handle of the crop rectangle (`top-left`, `right`, ...).

@@ -6,15 +6,15 @@ use gpui_kit::component::{ActiveTheme as _, h_resizable, resizable_panel, v_virt
 use gpui_kit::prelude::*;
 use gpui_kit::{
     AnyElement, Context, Focusable as _, FontWeight, IntoElement, KeyDownEvent, KeyUpEvent,
-    MouseButton, MouseDownEvent, ObjectFit, Render, TestSupportExt as _, Window, div, img, px,
-    size,
+    MouseButton, MouseDownEvent, MouseMoveEvent, ObjectFit, Render, TestSupportExt as _, Window,
+    canvas, div, img, px, size,
 };
 use lb_app::vm::{GAP, GridRow, HEADER_HEIGHT, Modifiers, NavKey};
 use lb_core::Photo;
 use std::rc::Rc;
 
 /// Pixels reserved on both sides of the grid for padding.
-const GRID_PADDING: f32 = GAP;
+pub(crate) const GRID_PADDING: f32 = GAP;
 
 impl Render for LightboxWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -37,6 +37,7 @@ impl Render for LightboxWindow {
             .text_color(theme.foreground)
             .text_sm();
         let root = match self.route() {
+            Route::Slideshow => root.child(self.render_slideshow(cx)),
             Route::Editor => root.child(self.render_editor(window, cx)),
             Route::Viewer => root.child(self.render_viewer(cx)),
             Route::Library => {
@@ -63,6 +64,7 @@ impl Render for LightboxWindow {
                 root.child(self.render_title_bar(cx))
                     .child(self.render_chips(cx))
                     .child(div().flex_1().min_h_0().child(main))
+                    .child(self.render_timeline(cx))
                     .child(self.render_tray(cx))
                     .child(self.render_status_bar(window, cx))
             }
@@ -105,12 +107,32 @@ impl LightboxWindow {
             range.map(|i| this.render_row(i, cx)).collect::<Vec<_>>()
         })
         .track_scroll(&self.scroll);
+        let bounds = self.grid_bounds.clone();
         div()
             .id(ids::GRID)
             .test_support()
+            .relative()
             .size_full()
+            .overflow_hidden()
             .px(px(GRID_PADDING))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, ev: &MouseDownEvent, window, cx| {
+                    this.band_press(ev, window, cx);
+                }),
+            )
+            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.band_move(ev, cx)))
+            .on_mouse_up(MouseButton::Left, crate::band::release_listener(cx))
+            .on_mouse_up_out(MouseButton::Left, crate::band::release_listener(cx))
             .child(list)
+            .child(
+                canvas(move |b, _, _| bounds.set(b), |_, (), _, _| {})
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full(),
+            )
+            .children(self.render_band(cx))
             .into_any_element()
     }
 
@@ -193,6 +215,7 @@ impl LightboxWindow {
                         shift: ev.modifiers.shift,
                         ctrl: ev.modifiers.control || ev.modifiers.platform,
                     };
+                    cx.stop_propagation();
                     this.click_cell(id, mods, cx);
                     if ev.click_count >= 2 {
                         this.open_photo(id, cx);
@@ -315,6 +338,10 @@ impl LightboxWindow {
             }
             Route::Editor => {
                 self.editor_key(key, m.shift, cmd, window, cx);
+                return;
+            }
+            Route::Slideshow => {
+                self.slideshow_key(key, window, cx);
                 return;
             }
             Route::Library => {}

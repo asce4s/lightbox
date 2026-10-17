@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
 use crate::query::ViewSource;
-use crate::search::{FilterChips, PhotoQueryResult, ViewQuery};
+use crate::search::{FilterChips, MonthBucket, PhotoQueryResult, ViewQuery};
 use indexmap::IndexSet;
 use lb_core::{EditOp, GroupBy, Photo, PhotoId, Selection, SortOrder};
 use std::collections::HashMap;
@@ -71,6 +71,7 @@ pub struct LibraryVm {
     focused: Option<PhotoId>,
     tray: IndexSet<PhotoId>,
     scroll_anchor: Option<PhotoId>,
+    band_base: Option<Selection>,
     zoom: u32,
     viewport_width: f32,
     layout: GridLayout,
@@ -81,9 +82,14 @@ pub struct LibraryVm {
 impl LibraryVm {
     /// A grid over all photos, grouped by month, showing nothing until [`Self::refresh`].
     pub fn new(lb: &Lightbox) -> Self {
+        let settings = lb.settings().load().unwrap_or_default();
+        let mut view = ViewQuery::new(ViewSource::AllPhotos);
+        view.group_by = settings.grid.group_by;
+        view.sort = settings.grid.sort;
+        view.show_hidden = settings.library.show_hidden;
         Self {
             lb: lb.clone(),
-            view: ViewQuery::new(ViewSource::AllPhotos),
+            view,
             result: PhotoQueryResult::default(),
             order: Vec::new(),
             pos: HashMap::new(),
@@ -91,7 +97,8 @@ impl LibraryVm {
             focused: None,
             tray: IndexSet::new(),
             scroll_anchor: None,
-            zoom: DEFAULT_ZOOM,
+            band_base: None,
+            zoom: settings.grid.thumb_size.zoom_px(),
             viewport_width: 1200.0,
             layout: GridLayout::default(),
             pending_search: None,
@@ -266,6 +273,15 @@ impl LibraryVm {
         self.refresh_logged();
     }
 
+    /// Applies the grid and library sections of changed settings.
+    pub fn apply_settings(&mut self, settings: &crate::Settings) {
+        self.view.group_by = settings.grid.group_by;
+        self.view.sort = settings.grid.sort;
+        self.view.show_hidden = settings.library.show_hidden;
+        self.zoom = settings.grid.thumb_size.zoom_px();
+        self.refresh_logged();
+    }
+
     /// Changes header grouping.
     pub fn set_group_by(&mut self, group_by: GroupBy) {
         self.view.group_by = group_by;
@@ -325,6 +341,49 @@ impl LibraryVm {
             }
             super::grid::GridRow::Header { .. } => None,
         })
+    }
+
+    // ---- timeline ----
+
+    /// Months of the current result in grid order, for the timeline scrubber.
+    pub fn timeline(&self) -> &[MonthBucket] {
+        &self.result.timeline
+    }
+
+    /// Anchors the grid to the first photo of month bucket `index` and returns its row, which the
+    /// view scrolls to the top.
+    pub fn timeline_jump(&mut self, index: usize) -> Option<usize> {
+        let first = self.result.timeline.get(index)?.first;
+        self.scroll_anchor = Some(first);
+        let (g, i) = *self.pos.get(&first)?;
+        self.layout.row_of(g, i)
+    }
+
+    /// Filters the grid to the months of buckets `a` to `b` (either order), as the date chip.
+    pub fn timeline_filter(&mut self, a: usize, b: usize) {
+        let (lo, hi) = (a.min(b), a.max(b));
+        let (Some(first), Some(last)) =
+            (self.result.timeline.get(lo), self.result.timeline.get(hi))
+        else {
+            return;
+        };
+        let mut months: Vec<(i32, u32)> = self.result.timeline[lo..=hi]
+            .iter()
+            .map(|m| (m.year, m.month))
+            .collect();
+        months.sort_unstable();
+        let (from_y, from_m) = months.first().copied().unwrap_or((first.year, first.month));
+        let (to_y, to_m) = months.last().copied().unwrap_or((last.year, last.month));
+        let from = chrono::NaiveDate::from_ymd_opt(from_y, from_m, 1);
+        let next = if to_m == 12 {
+            chrono::NaiveDate::from_ymd_opt(to_y + 1, 1, 1)
+        } else {
+            chrono::NaiveDate::from_ymd_opt(to_y, to_m + 1, 1)
+        };
+        let to = next.and_then(|d| d.pred_opt());
+        let mut chips = self.view.chips.clone();
+        chips.date = Some((from, to));
+        self.set_chips(chips);
     }
 
     // ---- selection ----
@@ -394,6 +453,54 @@ impl LibraryVm {
         }
         self.focused = Some(id);
         self.scroll_anchor = Some(id);
+    }
+
+    /// Starts a rubber-band selection. With `additive` the current selection stays and the band
+    /// adds to it; otherwise the selection is emptied first.
+    pub fn begin_band(&mut self, additive: bool) {
+        if !additive {
+            self.selection = Selection::default();
+        }
+        self.band_base = Some(self.selection.clone());
+    }
+
+    /// Selects the cells touched by the band rectangle (content coordinates, see
+    /// [`GridLayout::cells_in_rect`]) on top of the selection `begin_band` started from.
+    pub fn update_band(&mut self, x0: f32, y0: f32, x1: f32, y1: f32) {
+        let Some(base) = self.band_base.clone() else {
+            return;
+        };
+        let mut selection = base;
+        let mut hits: Vec<(usize, usize)> = self.layout.cells_in_rect(x0, y0, x1, y1);
+        hits.sort_unstable();
+        let mut first = None;
+        for (group, index) in hits {
+            let Some(id) = self
+                .result
+                .groups
+                .get(group)
+                .and_then(|g| g.ids.get(index))
+                .copied()
+            else {
+                continue;
+            };
+            first.get_or_insert(id);
+            selection.ids.insert(id);
+        }
+        if selection.anchor.is_none() {
+            selection.anchor = first;
+        }
+        self.selection = selection;
+    }
+
+    /// Ends the rubber-band selection.
+    pub fn end_band(&mut self) {
+        self.band_base = None;
+    }
+
+    /// Whether a rubber-band selection is in progress.
+    pub fn band_active(&self) -> bool {
+        self.band_base.is_some()
     }
 
     /// Selects every photo in the view.

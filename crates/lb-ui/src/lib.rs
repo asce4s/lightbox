@@ -3,12 +3,15 @@
 
 pub mod ids;
 
+mod band;
 mod chrome;
 mod editor;
 mod hello;
 mod overlays;
 mod render;
+mod slideshow;
 mod stage;
+mod timeline;
 mod viewer;
 mod window;
 

@@ -92,3 +92,29 @@ pub fn build(spec: &[(&str, usize)], options: LightboxOptions) -> TestLib {
 pub fn all_photos(lb: &Lightbox) -> Vec<Photo> {
     lb.photos().all().unwrap()
 }
+
+/// One folder of JPEGs with the given names; names like `IMG_20210615_120000.jpg` fix the capture
+/// date. Ids follow the order of `names`.
+pub fn named(names: &[&str]) -> TestLib {
+    let home = tempfile::tempdir().unwrap();
+    let photos = tempfile::tempdir().unwrap();
+    for (i, name) in names.iter().enumerate() {
+        write_jpeg(&photos.path().join(name), i as u8 + 1);
+    }
+    let lb =
+        Lightbox::open_with(home.path(), JobQueue::inline(), LightboxOptions::default()).unwrap();
+    lb.library()
+        .add_root(photos.path(), RootMode::Watch)
+        .unwrap();
+    let all = all_photos(&lb);
+    let ids = names
+        .iter()
+        .map(|n| all.iter().find(|p| p.path.ends_with(n)).unwrap().id)
+        .collect();
+    TestLib {
+        home,
+        photos,
+        lb,
+        ids,
+    }
+}
