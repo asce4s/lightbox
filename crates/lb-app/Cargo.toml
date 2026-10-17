@@ -46,4 +46,5 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 lb-testkit = { path = "../lb-testkit" }
+proptest = { workspace = true }
 tempfile = { workspace = true }

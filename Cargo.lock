@@ -4149,6 +4149,7 @@ dependencies = [
  "lb-video",
  "opener",
  "parking_lot",
+ "proptest",
  "serde",
  "serde_json",
  "tempfile",

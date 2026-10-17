@@ -34,6 +34,7 @@ mod tags;
 mod thumbs;
 #[cfg(feature = "video")]
 mod video;
+pub mod viewer;
 pub mod vm;
 mod xmp;
 

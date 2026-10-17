@@ -1,0 +1,10 @@
+//! UI-agnostic viewer: geometry, motion, navigation and loading (SPEC-VIEWER).
+
+mod transform;
+
+pub use transform::{
+    DRAG_THRESHOLD_PX, FILMSTRIP_HEIGHT, FramedView, Gesture, GestureState, INFO_PANEL_WIDTH,
+    Insets, NAV_DEBOUNCE, PIXEL_ZOOM_DIVISOR, RectF, SWIPE_THRESHOLD, ScrollDelta, ScrollMods,
+    TOOLBAR_GAP, TOOLBAR_HEIGHT, TOP_BAR_HEIGHT, ViewTransform, WheelMode, ZOOM_MAX, ZOOM_STEP,
+    clamp_pan, fit_area, fit_rect, fit_scale, is_drag, stage_insets, zoom_about,
+};
