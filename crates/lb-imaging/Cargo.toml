@@ -21,7 +21,12 @@ thiserror = { workspace = true }
 ab_glyph = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 lb-core = { path = "../lb-core", features = ["test-strategies"] }
 lb-testkit = { path = "../lb-testkit" }
 image = { workspace = true, features = ["png", "jpeg"] }
 proptest = { workspace = true }
+
+[[bench]]
+name = "edit_ops"
+harness = false
