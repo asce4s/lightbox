@@ -11,7 +11,7 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - [x] **M0.1** Workspace: all crates from SPEC §4.1 as empty libs/bins, `rust-toolchain.toml`, `[workspace.dependencies]`, `resolver = "3"`, edition 2024, lints (`unwrap_used`/`expect_used` denied in libs). Commit `Cargo.lock`.
 - [x] **M0.2** `xtask` with subcommands `ci`, `fixtures`, `goldens`, `perf`, `models` (stubs OK except `ci`). `ci` runs SPEC §13 steps 1–9 (skip steps whose tooling isn't ready yet, but print SKIPPED loudly; remove skips by M1 end).
 - [x] **M0.3** Dependency-rule checker (SPEC §4.2) inside `xtask ci`. Test: `xtask_dependency_rules_detect_violation` (uses a synthetic `cargo metadata` JSON).
-- [ ] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
+- [x] **M0.4** `lb-testkit` skeleton: `TestHome`, `wait_until`, `assert_images_close` (+ diff artifact writer). Tests: `testhome_sets_lightbox_home`, `wait_until_times_out`, `image_compare_detects_diff`.
 - [ ] **M0.5** Fixture generator from `tests/fixtures/manifest.toml` (SPEC §12.3), including EXIF writing (dates, camera, orientation, GPS). Tests: `fixtures_are_deterministic` (two runs → identical bytes), `fixtures_exif_readback` (read back with the chosen EXIF reader).
 - [ ] **M0.6** GPUI Kit hello window in `apps/lightbox` + one headless UI test `ui_hello_window_renders_label` in `lb-ui` using `#[gpui_kit::test]` and `.test_support()`. Record exact `gpui-kit` version and any Linux packages needed.
 - [ ] **M0.7** GitHub Actions: matrix (Linux/macOS/Windows) running `cargo xtask ci`; Linux installs system deps + ffmpeg. `deny.toml` per SPEC §13.
@@ -135,6 +135,8 @@ Legend: **P0** core · **P1** parity · **P2** feature-gated · **P3** optional.
 - 2026-10-17 · lb-app features · `default = [faces, video, map]`; P2 crates are optional deps forwarded by features; heavy impls (ONNX, ffmpeg) live behind further features inside those crates · SPEC §2 says P2 default-on but core tests pass with them off.
 - 2026-10-17 · lints · workspace `unwrap_used`/`expect_used` = deny, `clippy.toml` allows them in tests; `xtask` and `lb-testkit` opt out with a crate-level `allow` since they are tooling · SPEC says denied in library code only.
 - 2026-10-17 · gpui-kit scope · dependency checker allows `gpui-kit` only in `lb-ui`; `apps/lightbox` must reach GPUI through an `lb_ui` entry point (SPEC §4.2 lists lightbox → lb-app, lb-ui only) · keep §4.2 and §3.2 consistent.
+- 2026-10-17 · unsafe · workspace `unsafe_code` lowered from `forbid` to `deny`; only `lb-testkit/src/home.rs` allows it for `std::env::set_var` (unsafe in edition 2024), guarded by a process-wide lock · `TestHome` must set `LIGHTBOX_HOME` per SPEC §4.4/§12.2. Consequence: tests using `TestHome` serialize within one test binary.
+- 2026-10-17 · image diff semantics · `assert_images_close(actual, expected, max_diff, min_psnr)`: `max_diff` = largest allowed per-channel abs diff (u8, RGBA), PSNR over all RGBA channels, identical = infinity; diff.png amplifies |a-b| x8 on RGB, magenta where sizes differ.
 - 2026-10-17 · workspace deps · only crates needed soon are listed (exact `=` pins); others (notify, gpui-kit, nom-exif, ...) are added with the task that first uses them.
 
 ## Blockers
