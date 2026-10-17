@@ -153,3 +153,35 @@ impl GridLayout {
         })
     }
 }
+
+/// Duration badge text: `m:ss`, or `h:mm:ss` from one hour on. Rounds to the nearest second.
+pub fn duration_label(duration_ms: u64) -> String {
+    let secs = (duration_ms + 500) / 1000;
+    let (h, m, s) = (secs / 3600, secs / 60 % 60, secs % 60);
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::duration_label;
+
+    #[test]
+    fn duration_label_table() {
+        for (ms, want) in [
+            (0, "0:00"),
+            (499, "0:00"),
+            (500, "0:01"),
+            (59_400, "0:59"),
+            (59_500, "1:00"),
+            (754_000, "12:34"),
+            (3_600_000, "1:00:00"),
+            (3_725_000, "1:02:05"),
+        ] {
+            assert_eq!(duration_label(ms), want, "{ms} ms");
+        }
+    }
+}

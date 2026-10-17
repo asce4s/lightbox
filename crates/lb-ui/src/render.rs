@@ -261,6 +261,22 @@ impl LightboxWindow {
             badges = badges.child(div().text_color(theme.primary).child("◼"));
         }
         el = el.child(badges);
+        if let (lb_core::MediaType::Video, Some(ms)) = (photo.media_type, photo.duration_ms) {
+            el = el.child(
+                div()
+                    .id(ids::video_badge(id))
+                    .test_support()
+                    .absolute()
+                    .bottom_1()
+                    .right_1()
+                    .px_1()
+                    .rounded_sm()
+                    .text_xs()
+                    .bg(theme.background.opacity(0.75))
+                    .text_color(theme.foreground)
+                    .child(lb_app::vm::duration_label(ms)),
+            );
+        }
         if photo.rating > 0 {
             el = el.child(
                 div()

@@ -4272,8 +4272,16 @@ dependencies = [
 name = "lb-video"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "image",
  "lb-core",
  "lb-media",
+ "lb-testkit",
+ "parking_lot",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]

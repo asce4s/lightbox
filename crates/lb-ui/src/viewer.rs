@@ -58,6 +58,20 @@ impl LightboxWindow {
 
     /// Opens the viewer on `id`, with the current grid order as the filmstrip.
     pub fn open_photo(&mut self, id: PhotoId, cx: &mut Context<Self>) {
+        let is_video = self
+            .app
+            .photos()
+            .get(id)
+            .ok()
+            .flatten()
+            .is_some_and(|p| p.media_type == lb_core::MediaType::Video);
+        if is_video {
+            // Playback is out of scope (SPEC §6.16): hand the file to the default player.
+            if let Err(e) = self.app.photos().open_externally(id) {
+                self.notify_message(e.user_message(), cx);
+            }
+            return;
+        }
         let ids = self.vm.order().to_vec();
         let Some(vm) = ViewerVm::open(&self.app, ids, id) else {
             return;

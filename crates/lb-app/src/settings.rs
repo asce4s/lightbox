@@ -278,17 +278,22 @@ impl Lightbox {
     }
 }
 
+/// Reads every section from `catalog`; see [`SettingsService::load`].
+pub(crate) fn load_settings(catalog: &lb_catalog::Catalog) -> Result<Settings> {
+    let mut settings = Settings::default();
+    for (key, json) in catalog.list_settings()? {
+        if !settings.apply(&key, &json) {
+            tracing::warn!(%key, "unreadable setting ignored");
+        }
+    }
+    Ok(settings)
+}
+
 impl SettingsService {
     /// Loads every section. Missing sections, unknown keys and unreadable values fall back to
     /// the defaults so an older or newer file never prevents startup.
     pub fn load(&self) -> Result<Settings> {
-        let mut settings = Settings::default();
-        for (key, json) in self.lb.catalog().list_settings()? {
-            if !settings.apply(&key, &json) {
-                tracing::warn!(%key, "unreadable setting ignored");
-            }
-        }
-        Ok(settings)
+        load_settings(self.lb.catalog())
     }
 
     /// Stores the sections that differ from what is stored and emits one

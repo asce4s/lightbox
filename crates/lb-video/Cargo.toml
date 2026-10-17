@@ -11,3 +11,13 @@ workspace = true
 [dependencies]
 lb-core = { path = "../lb-core" }
 lb-media = { path = "../lb-media" }
+chrono = { workspace = true }
+image = { workspace = true, features = ["png"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+parking_lot = { workspace = true }
+lb-testkit = { path = "../lb-testkit" }
+tempfile = { workspace = true }

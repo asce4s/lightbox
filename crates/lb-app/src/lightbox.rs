@@ -105,11 +105,30 @@ impl Lightbox {
     pub fn open_paths(paths: AppPaths, jobs: JobQueue, options: LightboxOptions) -> Result<Self> {
         paths.ensure()?;
         let catalog = Catalog::open(&paths.catalog())?;
+        #[cfg(feature = "video")]
+        let video = crate::video::detect(&catalog);
+        #[cfg(feature = "video")]
+        let thumbs = match &video {
+            Some(tools) => ThumbCache::with_decoder(
+                &paths.cache,
+                Arc::new(lb_video::VideoDecoder::new(tools.clone())),
+            )?,
+            None => ThumbCache::open(&paths.cache)?,
+        };
+        #[cfg(not(feature = "video"))]
         let thumbs = ThumbCache::open(&paths.cache)?;
+        #[allow(unused_mut)]
+        let mut scan_options = ScanOptions::default();
+        #[cfg(feature = "video")]
+        {
+            scan_options.caps.video = true;
+            scan_options.video_prober = video
+                .clone()
+                .map(|t| Arc::new(t) as Arc<dyn lb_media::VideoProber>);
+        }
         let clock_for_scan = options.clock.clone();
-        let scanner = Scanner::with_clock(catalog.clone(), ScanOptions::default(), move || {
-            clock_for_scan.now()
-        });
+        let scanner =
+            Scanner::with_clock(catalog.clone(), scan_options, move || clock_for_scan.now());
         let bus = EventBus::new(options.clock.clone());
         if options.spawn_event_ticker {
             bus.spawn_ticker()?;

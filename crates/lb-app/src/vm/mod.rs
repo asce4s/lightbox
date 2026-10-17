@@ -19,7 +19,7 @@ pub use dialogs::{ConfirmAction, ConfirmVm, RenameVm};
 pub use editor::{EditorTab, EditorVm, TuningSlider};
 pub use effects::{EFFECTS, EffectPanelVm, EffectSpec, ParamSpec, effect, hue_to_rgb};
 pub use export_dialog::{ExportDialogVm, ExportField, ExportPhase, FieldError, SizeChoice};
-pub use grid::{GAP, GridLayout, GridRow, HEADER_HEIGHT, ZOOM_RANGE, columns_for};
+pub use grid::{GAP, GridLayout, GridRow, HEADER_HEIGHT, ZOOM_RANGE, columns_for, duration_label};
 pub use library::{DEFAULT_ZOOM, LibraryVm, Modifiers, NavKey, SEARCH_DEBOUNCE};
 #[cfg(feature = "map")]
 pub use map::{MapVm, ScreenCluster};

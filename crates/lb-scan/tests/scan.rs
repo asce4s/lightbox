@@ -385,3 +385,86 @@ fn exclude_roots_index_nothing() {
     assert!(matches!(events.as_slice(), [ScanEvent::Finished { .. }]));
     assert!(env.photos_under(&dir).is_empty());
 }
+
+#[derive(Debug)]
+struct FakeProber;
+
+impl lb_media::VideoProber for FakeProber {
+    fn probe(&self, path: &std::path::Path) -> lb_media::Result<lb_media::VideoMetadata> {
+        if path.file_name().is_some_and(|n| n == "broken.mp4") {
+            return Err(lb_media::MediaError::Corrupt("no moov atom".into()));
+        }
+        Ok(lb_media::VideoMetadata {
+            width: 1080,
+            height: 1920,
+            duration_ms: 4_200,
+            creation_time: chrono::NaiveDate::from_ymd_opt(2022, 3, 4)
+                .and_then(|d| d.and_hms_opt(5, 6, 7)),
+            location: Some(lb_core::GeoPoint { lat: 1.5, lon: 2.5 }),
+        })
+    }
+}
+
+fn video_env(prober: Option<std::sync::Arc<dyn lb_media::VideoProber>>) -> Env {
+    env_with(ScanOptions {
+        progress_interval: Duration::ZERO,
+        caps: lb_media::Capabilities {
+            video: true,
+            ..lb_media::Capabilities::default()
+        },
+        video_prober: prober,
+        ..ScanOptions::default()
+    })
+}
+
+fn video_root(env: &Env) -> std::path::PathBuf {
+    let dir = env.subdir("videos");
+    for name in ["clip.mp4", "broken.mp4"] {
+        std::fs::write(dir.join(name), b"\0\0\0\x18ftypisom0000").unwrap();
+    }
+    dir
+}
+
+#[test]
+fn videos_are_indexed_with_probed_metadata() {
+    let env = video_env(Some(std::sync::Arc::new(FakeProber)));
+    let root = env.add_root(&video_root(&env), RootMode::Once);
+    let (summary, _) = env.scan(&root);
+    assert_eq!((summary.added, summary.errors), (2, 0), "{summary:?}");
+    let photos = env.photos_under(&env.subdir("videos"));
+    let clip = photos
+        .iter()
+        .find(|p| p.path.ends_with("clip.mp4"))
+        .unwrap();
+    assert_eq!(clip.media_type, lb_core::MediaType::Video);
+    assert_eq!((clip.width, clip.height), (Some(1080), Some(1920)));
+    assert_eq!(clip.duration_ms, Some(4_200));
+    assert_eq!(clip.taken_at_src, Some(TakenAtSource::Video));
+    assert_eq!(clip.gps, Some(lb_core::GeoPoint { lat: 1.5, lon: 2.5 }));
+    let broken = photos
+        .iter()
+        .find(|p| p.path.ends_with("broken.mp4"))
+        .unwrap();
+    assert_eq!(
+        broken.status,
+        PhotoStatus::Ok,
+        "a failed probe does not hide the file"
+    );
+    assert_eq!(broken.duration_ms, None);
+}
+
+#[test]
+fn videos_are_skipped_unless_enabled_and_listed_without_a_prober() {
+    let env = env();
+    let root = env.add_root(&video_root(&env), RootMode::Once);
+    assert_eq!(env.scan(&root).0.added, 0, "videos are off by default");
+
+    let env = video_env(None);
+    let root = env.add_root(&video_root(&env), RootMode::Once);
+    assert_eq!(env.scan(&root).0.added, 2);
+    assert!(
+        env.photos_under(&env.subdir("videos"))
+            .iter()
+            .all(|p| p.duration_ms.is_none())
+    );
+}

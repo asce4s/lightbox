@@ -27,6 +27,8 @@ mod settings;
 mod system;
 mod tags;
 mod thumbs;
+#[cfg(feature = "video")]
+mod video;
 pub mod vm;
 
 pub use albums::AlbumService;

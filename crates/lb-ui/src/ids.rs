@@ -153,6 +153,11 @@ pub fn grid_cell(id: PhotoId) -> ElementId {
     named("grid-cell", unsigned(id.get()))
 }
 
+/// The duration badge of a video cell.
+pub fn video_badge(id: PhotoId) -> ElementId {
+    named("video-badge", unsigned(id.get()))
+}
+
 /// The header of group `idx`.
 pub fn group_header(idx: usize) -> ElementId {
     named("group-header", idx as u64)
