@@ -3,15 +3,20 @@
 
 pub mod ids;
 
+mod chrome;
 mod hello;
+mod overlays;
+mod render;
+mod window;
 
 pub use hello::{HELLO_TEXT, HelloWindow, open_hello_window};
+pub use window::{LightboxWindow, Overlay, thumb_size_for};
 
-/// Starts the GUI event loop and blocks until the last window closes.
-pub fn run() {
-    gpui_kit::application().run(|cx| {
+/// Starts the GUI event loop on `app` and blocks until the last window closes.
+pub fn run(app: lb_app::Lightbox) {
+    gpui_kit::application().run(move |cx| {
         gpui_kit::init(cx);
-        if let Err(error) = open_hello_window(cx) {
+        if let Err(error) = LightboxWindow::open(app, cx) {
             tracing::error!(%error, "could not open the main window");
             cx.quit();
         }

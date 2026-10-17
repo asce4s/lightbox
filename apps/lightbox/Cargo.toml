@@ -11,3 +11,5 @@ workspace = true
 [dependencies]
 lb-app = { path = "../../crates/lb-app" }
 lb-ui = { path = "../../crates/lb-ui" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

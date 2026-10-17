@@ -136,6 +136,11 @@ impl ThumbService {
         }
     }
 
+    /// Queues a render for a thumbnail the user is looking at right now (`Interactive` priority).
+    pub fn request_visible(&self, id: PhotoId, size: ThumbSize) -> ThumbTicket {
+        self.request_thumb(id, size, Priority::Interactive)
+    }
+
     /// Queues Background renders of `size` for every photo that is not cached yet.
     pub fn warm(&self, size: ThumbSize) -> Result<Vec<ThumbTicket>> {
         let mut tickets = Vec::new();
