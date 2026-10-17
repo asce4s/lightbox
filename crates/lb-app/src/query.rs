@@ -1,7 +1,7 @@
 //! What the grid shows: the source of photos and how they are listed (SPEC §7.2).
 
 use lb_catalog::QuerySource;
-use lb_core::{AlbumId, FolderId, PhotoId};
+use lb_core::{AlbumId, FolderId, PersonId, PhotoId};
 
 /// Where the photos of a view come from.
 #[derive(Debug, Clone, PartialEq)]
@@ -12,6 +12,8 @@ pub enum ViewSource {
     Folder(FolderId),
     /// One album, in album order.
     Album(AlbumId),
+    /// Photos with a face of one person.
+    Person(PersonId),
     /// Starred photos.
     Starred,
     /// Edited photos, most recently edited first.
@@ -26,6 +28,7 @@ impl ViewSource {
             Self::AllPhotos => QuerySource::All,
             Self::Folder(id) => QuerySource::Folder(*id),
             Self::Album(id) => QuerySource::Album(*id),
+            Self::Person(id) => QuerySource::Person(*id),
             Self::Starred => QuerySource::Starred,
             Self::RecentlyEdited => QuerySource::RecentlyEdited,
             Self::Ids(ids) => QuerySource::Ids(ids.clone()),

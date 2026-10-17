@@ -98,6 +98,27 @@ pub fn sniff_format(head: &[u8]) -> Option<Format> {
         ] => Some(Format::Webp),
         [b'I', b'I', 0x2A, 0x00, ..] | [b'M', b'M', 0x00, 0x2A, ..] => Some(Format::Tiff),
         [b'B', b'M', ..] => Some(Format::Bmp),
+        [_, _, _, _, b'f', b't', b'y', b'p', brand @ ..] => Some(if brand.starts_with(b"qt") {
+            Format::Mov
+        } else {
+            Format::Mp4
+        }),
+        [
+            b'R',
+            b'I',
+            b'F',
+            b'F',
+            _,
+            _,
+            _,
+            _,
+            b'A',
+            b'V',
+            b'I',
+            b' ',
+            ..,
+        ] => Some(Format::Avi),
+        [0x1A, 0x45, 0xDF, 0xA3, ..] => Some(Format::Mkv),
         _ => None,
     }
 }
@@ -133,6 +154,13 @@ mod tests {
         assert_eq!(sniff_format(b"RIFF\0\0\0\0WEBPVP8 "), Some(Format::Webp));
         assert_eq!(sniff_format(b"II*\0"), Some(Format::Tiff));
         assert_eq!(sniff_format(b"BM\0\0"), Some(Format::Bmp));
+        assert_eq!(sniff_format(b"\0\0\0\x18ftypisom"), Some(Format::Mp4));
+        assert_eq!(sniff_format(b"\0\0\0\x14ftypqt  "), Some(Format::Mov));
+        assert_eq!(sniff_format(b"RIFF\0\0\0\0AVI LIST"), Some(Format::Avi));
+        assert_eq!(
+            sniff_format(&[0x1A, 0x45, 0xDF, 0xA3, 0x01]),
+            Some(Format::Mkv)
+        );
         assert_eq!(sniff_format(b"hello world, not an image"), None);
         assert_eq!(sniff_format(b""), None);
     }

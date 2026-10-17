@@ -13,3 +13,9 @@ anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 lb-testkit = { path = "../crates/lb-testkit" }
+lb-faces = { path = "../crates/lb-faces" }
+directories = { workspace = true }
+ureq = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

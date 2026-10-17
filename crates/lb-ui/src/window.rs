@@ -595,6 +595,8 @@ pub fn sidebar_id(key: SidebarKey) -> gpui_kit::ElementId {
         SidebarKey::Recent => ids::SIDEBAR_RECENT.into(),
         SidebarKey::Album(id) => ids::album_item(id),
         SidebarKey::Folder(id) => ids::folder_item(id),
+        SidebarKey::Person(id) => ids::person_item(id),
+        SidebarKey::Unnamed => ids::SIDEBAR_UNNAMED.into(),
         SidebarKey::Year(y) => {
             gpui_kit::ElementId::NamedInteger("year-heading".into(), y.map_or(0, |y| y as u64))
         }

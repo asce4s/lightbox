@@ -6,7 +6,7 @@
 use super::dt_from_db;
 use crate::{Catalog, error::Result};
 use chrono::NaiveDateTime;
-use lb_core::{AlbumId, FolderId, PhotoId, SortOrder, SqlValue};
+use lb_core::{AlbumId, FolderId, PersonId, PhotoId, SortOrder, SqlValue};
 use rusqlite::types::Value;
 
 /// The set of photos a query starts from.
@@ -22,6 +22,8 @@ pub enum QuerySource {
     Starred,
     /// Photos that have an edit stack, most recently edited first (the `sort` field is ignored).
     RecentlyEdited,
+    /// Photos with a face of this person.
+    Person(PersonId),
     /// An explicit list of photos (tray, duplicates, imports, people).
     Ids(Vec<PhotoId>),
 }
@@ -123,6 +125,10 @@ impl Catalog {
             QuerySource::Starred => wheres.push("p.starred = 1".into()),
             QuerySource::RecentlyEdited => {
                 joins.push_str(" JOIN edits e ON e.photo_id = p.id");
+            }
+            QuerySource::Person(id) => {
+                wheres.push("p.id IN (SELECT photo_id FROM faces WHERE person_id = ?)".into());
+                params.push(Value::Integer(id.get()));
             }
             QuerySource::Ids(ids) => {
                 wheres.push("p.id IN (SELECT value FROM json_each(?))".into());

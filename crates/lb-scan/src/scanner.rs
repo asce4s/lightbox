@@ -6,7 +6,7 @@ use crate::rules::{has_hidden_attribute, is_ignored_name, is_under_any};
 use chrono::NaiveDateTime;
 use lb_catalog::{Catalog, IndexedFile, NewFolder, PhotoUpsert};
 use lb_core::{FolderId, Format, GeoPoint, PhotoId, PhotoStatus, Root, RootId, RootMode};
-use lb_media::{Capabilities, DateSources, ImageMetadata, MediaError};
+use lb_media::{Capabilities, DateSources, ImageMetadata, MediaError, VideoMetadata, VideoProber};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -29,6 +29,8 @@ pub struct ScanOptions {
     pub progress_interval: Duration,
     /// Directories that are never scanned (Lightbox's own data and cache directories).
     pub ignored_dirs: Vec<PathBuf>,
+    /// Reads video metadata; without one, videos are indexed from file-system data only.
+    pub video_prober: Option<Arc<dyn VideoProber>>,
 }
 
 impl Default for ScanOptions {
@@ -38,6 +40,7 @@ impl Default for ScanOptions {
             batch_size: DEFAULT_BATCH,
             progress_interval: Duration::from_millis(100),
             ignored_dirs: Vec::new(),
+            video_prober: None,
         }
     }
 }
@@ -540,9 +543,10 @@ impl Scanner {
         folders: &mut HashMap<PathBuf, FolderId>,
         moved: &HashSet<PathBuf>,
     ) -> Result<BatchOutcome> {
+        let prober = self.opts.video_prober.as_deref();
         let extracted: Vec<_> = batch
             .par_iter()
-            .map(|c| (lb_media::quick_key(&c.path), extract(c)))
+            .map(|c| (lb_media::quick_key(&c.path), extract(c, prober)))
             .collect();
         let mut rows = Vec::with_capacity(batch.len());
         let mut kept = Vec::with_capacity(batch.len());
@@ -587,18 +591,36 @@ fn is_unchanged(row: Option<&IndexedFile>, c: &Candidate) -> bool {
     row.is_some_and(|e| e.size == c.size && e.mtime == c.mtime && e.status != PhotoStatus::Missing)
 }
 
-fn extract(c: &Candidate) -> Result<ImageMetadata, MediaError> {
+/// What reading one candidate produced.
+enum Extracted {
+    Image(Box<Result<ImageMetadata, MediaError>>),
+    /// Videos are indexed even when their metadata is unavailable.
+    Video(Option<VideoMetadata>),
+}
+
+fn extract(c: &Candidate, prober: Option<&dyn VideoProber>) -> Extracted {
     if c.format.media_type() == lb_core::MediaType::Video {
-        return Err(MediaError::Unsupported("video metadata".into()));
+        let meta = prober.and_then(|p| match p.probe(&c.path) {
+            Ok(m) => Some(m),
+            Err(e) => {
+                tracing::warn!(path = %c.path.display(), error = %e, "cannot read video metadata");
+                None
+            }
+        });
+        return Extracted::Video(meta);
     }
-    lb_media::extract_image(&c.path, &c.file_name, c.mtime)
+    Extracted::Image(Box::new(lb_media::extract_image(
+        &c.path,
+        &c.file_name,
+        c.mtime,
+    )))
 }
 
 fn build_row(
     folder_id: FolderId,
     c: &Candidate,
     quick_key: String,
-    meta: Result<ImageMetadata, MediaError>,
+    extracted: Extracted,
 ) -> PhotoUpsert {
     let mut row = PhotoUpsert::new(
         folder_id,
@@ -608,6 +630,25 @@ fn build_row(
         c.mtime,
         quick_key,
     );
+    let meta = match extracted {
+        Extracted::Image(meta) => *meta,
+        Extracted::Video(meta) => {
+            let sources = DateSources {
+                video_creation: meta.as_ref().and_then(|m| m.creation_time),
+                ..DateSources::default()
+            };
+            let taken = lb_media::fallback_taken_at(&sources, &c.file_name, c.mtime);
+            row.taken_at = Some(taken.at);
+            row.taken_at_src = Some(taken.source);
+            if let Some(m) = meta {
+                row.width = Some(m.width);
+                row.height = Some(m.height);
+                row.duration_ms = Some(m.duration_ms);
+                row.gps = m.location;
+            }
+            return row;
+        }
+    };
     match meta {
         Ok(m) => {
             row.format = m.probe.format;

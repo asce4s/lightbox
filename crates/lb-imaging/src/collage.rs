@@ -180,7 +180,13 @@ struct MosaicRow {
     full: bool,
 }
 
-fn mosaic_rows(aspects: &[f32], avail: f32, gap: f32, target: f32) -> Vec<MosaicRow> {
+fn mosaic_rows(
+    aspects: &[f32],
+    avail: f32,
+    gap: f32,
+    target: f32,
+    max_items: usize,
+) -> Vec<MosaicRow> {
     let mut rows = Vec::new();
     let mut items: Vec<usize> = Vec::new();
     let mut sum = 0.0_f32;
@@ -188,9 +194,9 @@ fn mosaic_rows(aspects: &[f32], avail: f32, gap: f32, target: f32) -> Vec<Mosaic
         items.push(i);
         sum += a;
         let gaps = gap * (items.len() as f32 - 1.0);
-        if sum * target + gaps >= avail {
+        if sum * target + gaps >= avail || items.len() >= max_items {
             rows.push(MosaicRow {
-                height: (avail - gaps) / sum,
+                height: ((avail - gaps) / sum).max(1.0),
                 items: std::mem::take(&mut items),
                 full: true,
             });
@@ -217,16 +223,20 @@ fn mosaic_height(rows: &[MosaicRow], gap: f32) -> f32 {
     rows.iter().map(|r| r.height).sum::<f32>() + gap * (rows.len() as f32 + 1.0)
 }
 
-fn mosaic(spec: &CollageSpec, aspects: &[f32]) -> Vec<Placement> {
-    let (cw, ch) = (spec.width as f32, spec.height as f32);
-    let gap = (spec.spacing as f32).min(cw / 8.0).min(ch / 8.0).floor();
+/// Rows for the largest target height whose stack still fits `ch`; `None` when even the
+/// smallest rows do not fit.
+fn fit_mosaic_rows(aspects: &[f32], cw: f32, ch: f32, gap: f32) -> Option<Vec<MosaicRow>> {
     let avail = cw - 2.0 * gap;
-    let aspects: Vec<f32> = aspects.iter().map(|a| a.max(0.05)).collect();
+    // Every photo needs one pixel, so a row holds a bounded number of them.
+    let max_items = (((avail + gap) / (1.0 + gap)).floor() as usize).max(1);
     let (mut lo, mut hi) = (1.0_f32, ch);
-    let mut best = mosaic_rows(&aspects, avail, gap, lo);
+    let mut best = mosaic_rows(aspects, avail, gap, lo, max_items);
+    if mosaic_height(&best, gap) > ch {
+        return None;
+    }
     for _ in 0..24 {
         let mid = (lo + hi) / 2.0;
-        let rows = mosaic_rows(&aspects, avail, gap, mid);
+        let rows = mosaic_rows(aspects, avail, gap, mid, max_items);
         if mosaic_height(&rows, gap) <= ch {
             lo = mid;
             best = rows;
@@ -234,18 +244,36 @@ fn mosaic(spec: &CollageSpec, aspects: &[f32]) -> Vec<Placement> {
             hi = mid;
         }
     }
-    let rows = best;
+    Some(best)
+}
+
+fn mosaic(spec: &CollageSpec, aspects: &[f32]) -> Vec<Placement> {
+    let (cw, ch) = (spec.width as f32, spec.height as f32);
+    let mut gap = (spec.spacing as f32).min(cw / 8.0).min(ch / 8.0).floor();
+    let aspects: Vec<f32> = aspects.iter().map(|a| a.max(0.05)).collect();
+    // Dense collages shrink the spacing instead of overflowing the canvas.
+    let rows = loop {
+        if let Some(rows) = fit_mosaic_rows(&aspects, cw, ch, gap) {
+            break rows;
+        }
+        if gap <= 0.0 {
+            let max_items = (cw as usize).max(1);
+            break mosaic_rows(&aspects, cw, 0.0, 1.0, max_items);
+        }
+        gap = (gap / 2.0).floor();
+    };
     let mut scale = 1.0_f32;
     let total = mosaic_height(&rows, gap);
     if total > ch {
         let heights: f32 = rows.iter().map(|r| r.height).sum();
         scale = ((ch - gap * (rows.len() as f32 + 1.0)) / heights).max(0.0);
     }
+    let gap_px = gap as i32;
     let heights: Vec<i32> = rows
         .iter()
         .map(|r| ((r.height * scale).round() as i32).max(1))
         .collect();
-    let used = heights.iter().sum::<i32>() + gap as i32 * (rows.len() as i32 - 1);
+    let used = heights.iter().sum::<i32>() + gap_px * (rows.len() as i32 - 1);
     let mut y = (spec.height as i32 - used).max(0) / 2;
     let mut out = Vec::with_capacity(aspects.len());
     for (row, &h) in rows.iter().zip(&heights) {
@@ -256,18 +284,37 @@ fn mosaic(spec: &CollageSpec, aspects: &[f32]) -> Vec<Placement> {
         } else {
             ((cw - row_w) / 2.0).max(0.0)
         };
+        let mut spans: Vec<(i32, i32)> = Vec::with_capacity(row.items.len());
         let mut left = x0;
-        for (k, &i) in row.items.iter().enumerate() {
-            let l = left.round() as i32;
+        let mut prev_right = i32::MIN;
+        for (k, _) in row.items.iter().enumerate() {
+            let l = (left.round() as i32).max(prev_right.saturating_add(gap_px));
             let mut r = (left + widths[k]).round() as i32;
             if row.full && scale >= 1.0 && k + 1 == row.items.len() {
                 r = (cw - gap) as i32;
             }
-            let r = r.min(spec.width as i32);
-            out.push(Placement::rect(i, l, y, (r - l).max(1), h));
+            let r = r.max(l + 1);
+            spans.push((l, r));
+            prev_right = r;
             left += widths[k] + gap;
         }
-        y += h + gap as i32;
+        // One-pixel minimums can push a dense row past the edge; slide items back inside.
+        let mut limit = spec.width as i32;
+        for span in spans.iter_mut().rev() {
+            span.1 = span.1.min(limit);
+            span.0 = span.0.min(span.1 - 1);
+            limit = span.0 - gap_px;
+        }
+        let mut floor = 0;
+        for span in &mut spans {
+            span.0 = span.0.max(floor);
+            span.1 = span.1.max(span.0 + 1);
+            floor = span.1 + gap_px;
+        }
+        for (&i, (l, r)) in row.items.iter().zip(spans) {
+            out.push(Placement::rect(i, l, y, r - l, h));
+        }
+        y += h + gap_px;
     }
     out.sort_by_key(|p| p.index);
     out

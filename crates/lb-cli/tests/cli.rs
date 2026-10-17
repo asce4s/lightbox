@@ -477,3 +477,53 @@ fn cli_collage_e2e() {
     .assert()
     .code(1);
 }
+
+#[test]
+fn cli_picasa_import_e2e() {
+    let env = Env::empty();
+    let dir = env.photos.path();
+    write_jpeg(&dir.join("IMG_0001.JPG"), 1);
+    write_jpeg(&dir.join("IMG_0002.JPG"), 2);
+    std::fs::write(
+        dir.join(".picasa.ini"),
+        "[Picasa]\ndescription=Trip\n\
+         [IMG_0001.JPG]\nstar=yes\ncaption=Hello\nkeywords=sea\nrotate=rotate(1)\n\
+         filters=bw=1;nonsense=1;\n\
+         [IMG_0003.JPG]\nstar=yes\n",
+    )
+    .unwrap();
+    env.json(&["roots", "add", dir.to_str().unwrap()]);
+    let folder = dir.to_str().unwrap();
+
+    let dry = env.json(&["picasa-import", folder, "--dry-run"]);
+    assert_eq!(dry["dry_run"], true);
+    assert_eq!(dry["starred"], 1);
+    let starred = |env: &Env| {
+        env.json(&["query", "", "--source", "starred"])["photos"]
+            .as_array()
+            .unwrap()
+            .len()
+    };
+    assert_eq!(starred(&env), 0);
+
+    let done = env.json(&["picasa-import", folder]);
+    assert_eq!(done["photos_matched"], 1);
+    assert_eq!(done["photos_missing"], 1);
+    assert_eq!(done["starred"], 1);
+    assert_eq!(done["captions"], 1);
+    assert_eq!(done["tags_added"], 1);
+    assert_eq!(done["edits"], 1);
+    assert_eq!(done["folder_captions"], 1);
+    assert_eq!(done["skipped_filters"][0], "nonsense");
+    assert_eq!(env.ids("sea").len(), 1);
+    assert_eq!(starred(&env), 1);
+
+    let again = env.json(&["picasa-import", folder, "--overwrite"]);
+    assert_eq!(again["starred"], 0);
+    assert_eq!(again["captions"], 0);
+    assert_eq!(again["edits"], 0);
+
+    env.cmd(&["picasa-import", "/definitely/not/a/folder"])
+        .assert()
+        .code(1);
+}

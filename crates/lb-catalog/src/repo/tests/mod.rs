@@ -1,5 +1,6 @@
 mod albums;
 mod edits;
+mod faces;
 mod fts;
 mod library;
 mod photos;

@@ -4,7 +4,7 @@ use crate::error::Result;
 use crate::lightbox::Lightbox;
 use crate::query::ViewSource;
 use chrono::Datelike;
-use lb_core::{Album, AlbumId, FolderId};
+use lb_core::{Album, AlbumId, FolderId, PersonId};
 use std::collections::BTreeMap;
 
 /// Identity of a sidebar row.
@@ -20,6 +20,10 @@ pub enum SidebarKey {
     Album(AlbumId),
     /// A folder.
     Folder(FolderId),
+    /// A named person.
+    Person(PersonId),
+    /// Faces that are not named yet.
+    Unnamed,
     /// A non-selectable year heading in the folder tree; `None` groups undated folders.
     Year(Option<i32>),
 }
@@ -138,21 +142,65 @@ impl SidebarVm {
                 folders.push(item(SidebarKey::Folder(id), &name, n, 1));
             }
         }
-        self.sections = vec![
+        let mut sections = vec![
             library,
             SidebarSection {
                 title: "Albums",
                 items: albums,
             },
-            SidebarSection {
-                title: "Folders",
-                items: folders,
-            },
         ];
+        #[cfg(feature = "faces")]
+        if let Some(people) = self.people_section()? {
+            sections.push(people);
+        }
+        sections.push(SidebarSection {
+            title: "Folders",
+            items: folders,
+        });
+        self.sections = sections;
         if !self.contains(self.selected) {
             self.selected = SidebarKey::All;
         }
         Ok(())
+    }
+
+    #[cfg(feature = "faces")]
+    fn people_section(&self) -> Result<Option<SidebarSection>> {
+        use lb_core::PeopleKey;
+        let entries = self.lb.faces().people(false)?;
+        if entries.is_empty() {
+            return Ok(None);
+        }
+        let mut items = Vec::new();
+        let unnamed_photos = self.unnamed_photos(&entries)?;
+        if !unnamed_photos.is_empty() {
+            items.push(item(
+                SidebarKey::Unnamed,
+                "Unnamed",
+                unnamed_photos.len(),
+                0,
+            ));
+        }
+        for entry in &entries {
+            if let (PeopleKey::Person(id), Some(name)) = (entry.key, &entry.name) {
+                items.push(item(SidebarKey::Person(id), name, entry.photo_count, 0));
+            }
+        }
+        Ok(Some(SidebarSection {
+            title: "People",
+            items,
+        }))
+    }
+
+    #[cfg(feature = "faces")]
+    fn unnamed_photos(&self, entries: &[lb_core::PeopleEntry]) -> Result<Vec<lb_core::PhotoId>> {
+        let mut ids = std::collections::BTreeSet::new();
+        for entry in entries {
+            if matches!(entry.key, lb_core::PeopleKey::Cluster(_)) {
+                ids.extend(self.lb.faces().photos_of(entry.key)?);
+            }
+        }
+        Ok(ids.into_iter().collect())
     }
 
     fn contains(&self, key: SidebarKey) -> bool {
@@ -164,7 +212,14 @@ impl SidebarVm {
 
     /// Highlights `key` and returns the source to show; headings are not selectable.
     pub fn select(&mut self, key: SidebarKey) -> Option<ViewSource> {
-        let source = source_of(key)?;
+        let source = match key {
+            #[cfg(feature = "faces")]
+            SidebarKey::Unnamed => {
+                let entries = self.lb.faces().people(false).ok()?;
+                ViewSource::Ids(self.unnamed_photos(&entries).ok()?)
+            }
+            other => source_of(other)?,
+        };
         if !self.contains(key) {
             return None;
         }
@@ -180,6 +235,7 @@ impl SidebarVm {
             ViewSource::RecentlyEdited => Some(SidebarKey::Recent),
             ViewSource::Album(id) => Some(SidebarKey::Album(*id)),
             ViewSource::Folder(id) => Some(SidebarKey::Folder(*id)),
+            ViewSource::Person(id) => Some(SidebarKey::Person(*id)),
             ViewSource::Ids(_) => None,
         }
     }
@@ -222,7 +278,8 @@ fn source_of(key: SidebarKey) -> Option<ViewSource> {
         SidebarKey::Recent => Some(ViewSource::RecentlyEdited),
         SidebarKey::Album(id) => Some(ViewSource::Album(id)),
         SidebarKey::Folder(id) => Some(ViewSource::Folder(id)),
-        SidebarKey::Year(_) => None,
+        SidebarKey::Person(id) => Some(ViewSource::Person(id)),
+        SidebarKey::Unnamed | SidebarKey::Year(_) => None,
     }
 }
 

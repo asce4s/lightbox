@@ -8,6 +8,20 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+default = []
+onnx = ["dep:ort"]
+
 [dependencies]
 lb-core = { path = "../lb-core" }
 lb-media = { path = "../lb-media" }
+image = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+ort = { workspace = true, optional = true }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+proptest = { workspace = true }
+tempfile = { workspace = true }

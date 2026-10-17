@@ -31,6 +31,7 @@ ids! {
     SIDEBAR_ALL = "sidebar-all",
     SIDEBAR_STARRED = "sidebar-starred",
     SIDEBAR_RECENT = "sidebar-recent",
+    SIDEBAR_UNNAMED = "sidebar-unnamed",
     NEW_ALBUM_BUTTON = "new-album",
     GRID = "grid",
     GRID_EMPTY = "grid-empty",
@@ -153,6 +154,11 @@ pub fn grid_cell(id: PhotoId) -> ElementId {
     named("grid-cell", unsigned(id.get()))
 }
 
+/// The duration badge of a video cell.
+pub fn video_badge(id: PhotoId) -> ElementId {
+    named("video-badge", unsigned(id.get()))
+}
+
 /// The header of group `idx`.
 pub fn group_header(idx: usize) -> ElementId {
     named("group-header", idx as u64)
@@ -171,6 +177,11 @@ pub fn album_pick(id: AlbumId) -> ElementId {
 /// A folder row in the sidebar.
 pub fn folder_item(id: lb_core::FolderId) -> ElementId {
     named("folder-item", unsigned(id.get()))
+}
+
+/// A person row in the sidebar.
+pub fn person_item(id: lb_core::PersonId) -> ElementId {
+    named("person-item", unsigned(id.get()))
 }
 
 /// A thumbnail in the photo tray.

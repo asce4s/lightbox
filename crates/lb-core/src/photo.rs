@@ -104,6 +104,8 @@ pub struct Photo {
     pub camera: Option<String>,
     /// GPS position.
     pub gps: Option<GeoPoint>,
+    /// Video duration in milliseconds.
+    pub duration_ms: Option<u64>,
     /// User caption.
     pub caption: Option<String>,
     /// Starred flag.
@@ -170,6 +172,7 @@ mod tests {
                 lat: 38.7223,
                 lon: -9.1393,
             }),
+            duration_ms: None,
             caption: None,
             starred: true,
             rating: 4,

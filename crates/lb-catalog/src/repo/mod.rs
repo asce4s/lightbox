@@ -2,6 +2,7 @@
 
 mod albums;
 mod edits;
+mod faces;
 mod folders;
 mod photos;
 mod query;
@@ -16,6 +17,7 @@ mod test_util;
 mod tests;
 
 pub use edits::EditRecord;
+pub use faces::{FaceEmbedding, MAX_PERSON_NAME_CHARS, NewFace};
 pub use folders::NewFolder;
 pub use photos::{PhotoHashes, PhotoUpsert, UpsertOutcome};
 pub use query::{PhotoQuery, QueryRow, QuerySource, SqlFragment};

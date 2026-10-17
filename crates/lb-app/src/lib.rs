@@ -11,13 +11,18 @@ mod edits;
 mod error;
 mod events;
 mod export;
+#[cfg(feature = "faces")]
+mod faces;
 mod files;
 mod history;
 mod import;
 mod library;
 mod lightbox;
+#[cfg(feature = "map")]
+mod map;
 mod paths;
 mod photos;
+mod picasa;
 mod query;
 mod rename;
 mod search;
@@ -25,6 +30,8 @@ mod settings;
 mod system;
 mod tags;
 mod thumbs;
+#[cfg(feature = "video")]
+mod video;
 pub mod vm;
 
 pub use albums::AlbumService;
@@ -43,6 +50,8 @@ pub use export::{
     CollisionPolicy, ExportFormat, ExportHandle, ExportOptions, ExportReport, ExportService,
     ExportSize, ExportedFile, MetadataPolicy,
 };
+#[cfg(feature = "faces")]
+pub use faces::{FaceScanReport, FaceService, MAX_RECLUSTER_FACES};
 pub use files::{DeleteReport, MoveReport};
 pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
 pub use import::{
@@ -54,9 +63,12 @@ pub use lb_scan::ScanSummary;
 pub use lb_thumbs::ThumbSize;
 pub use library::LibraryService;
 pub use lightbox::{Lightbox, LightboxOptions};
+#[cfg(feature = "map")]
+pub use map::{ATTRIBUTION, CLUSTER_CELL_PX, MAX_ZOOM, MIN_ZOOM, MapService};
 pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};
 pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};
+pub use picasa::{PicasaImportService, PicasaOptions, PicasaReport};
 pub use query::ViewSource;
 pub use rename::{RenamePreview, RenameReport, expand_rename_pattern};
 pub use search::{

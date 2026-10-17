@@ -67,6 +67,8 @@ enum Command {
     Dupes(DupesArgs),
     /// Build a collage JPEG from photos.
     Collage(CollageArgs),
+    /// Import star, caption, tags, albums, edits and faces from `.picasa.ini` files.
+    PicasaImport(PicasaArgs),
     /// Thumbnail cache maintenance.
     Thumbs {
         #[command(subcommand)]
@@ -240,6 +242,18 @@ struct DupesArgs {
     threshold: u32,
 }
 
+#[derive(Debug, Args)]
+struct PicasaArgs {
+    /// Folder holding `.picasa.ini` files (searched recursively).
+    folder: PathBuf,
+    /// Replace existing captions, edits, folder captions and imported faces.
+    #[arg(long)]
+    overwrite: bool,
+    /// Only report what would change.
+    #[arg(long)]
+    dry_run: bool,
+}
+
 #[derive(Debug, Subcommand)]
 enum ThumbsCmd {
     /// Generate missing thumbnails.
@@ -391,6 +405,7 @@ pub fn run(cli: Cli) -> CliResult {
         Command::Export(a) => export(&lb, &a),
         Command::Dupes(a) => dupes(&lb, &a),
         Command::Collage(a) => collage(&lb, &a),
+        Command::PicasaImport(a) => picasa_import(&lb, &a),
         Command::Thumbs { action } => {
             let ThumbsCmd::Warm { size } = action;
             thumbs_warm(&lb, &size)
@@ -429,6 +444,44 @@ fn roots(lb: &Lightbox, action: RootsCmd) -> CliResult {
             out(Value::Array(json), text)
         }
     }
+}
+
+fn picasa_import(lb: &Lightbox, a: &PicasaArgs) -> CliResult {
+    let options = lb_app::PicasaOptions {
+        overwrite: a.overwrite,
+    };
+    let r = if a.dry_run {
+        lb.picasa().preview(&a.folder, options)?
+    } else {
+        lb.picasa().import(&a.folder, options)?
+    };
+    out(
+        json!({
+            "dry_run": a.dry_run, "ini_files": r.ini_files,
+            "photos_matched": r.photos_matched, "photos_missing": r.photos_missing,
+            "starred": r.starred, "captions": r.captions, "tags_added": r.tags_added,
+            "albums_created": r.albums_created, "album_links": r.album_links,
+            "edits": r.edits, "faces": r.faces, "folder_captions": r.folder_captions,
+            "skipped_filters": r.skipped_filters,
+        }),
+        format!(
+            "{} {} ini file(s), {} photo(s): {} starred, {} captions, {} tags, {} albums, \
+             {} edits, {} faces",
+            if a.dry_run {
+                "would import"
+            } else {
+                "imported"
+            },
+            r.ini_files,
+            r.photos_matched,
+            r.starred,
+            r.captions,
+            r.tags_added,
+            r.albums_created,
+            r.edits,
+            r.faces
+        ),
+    )
 }
 
 fn scan(lb: &Lightbox, a: &ScanArgs) -> CliResult {

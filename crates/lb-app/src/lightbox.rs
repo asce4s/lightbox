@@ -28,6 +28,13 @@ pub struct LightboxOptions {
     pub trash: Arc<dyn TrashBackend>,
     /// How files are opened and revealed.
     pub opener: Arc<dyn Opener>,
+    /// Source of map tiles; `None` fetches from the URL in the settings. Tests inject a local one.
+    #[cfg(feature = "map")]
+    pub tile_provider: Option<Arc<dyn lb_geo::TileProvider>>,
+    /// Face detector and embedder; `None` loads the models from the models directory. Tests
+    /// inject the mocks.
+    #[cfg(feature = "faces")]
+    pub face_pipeline: Option<Arc<lb_faces::FacePipeline>>,
 }
 
 impl Default for LightboxOptions {
@@ -37,6 +44,10 @@ impl Default for LightboxOptions {
             spawn_event_ticker: true,
             trash: Arc::new(SystemTrash),
             opener: Arc::new(SystemOpener),
+            #[cfg(feature = "map")]
+            tile_provider: None,
+            #[cfg(feature = "faces")]
+            face_pipeline: None,
         }
     }
 }
@@ -55,6 +66,10 @@ pub(crate) struct Inner {
     pub(crate) scan_cancel: AtomicBool,
     pub(crate) edit_lock: Mutex<()>,
     pub(crate) watcher: Mutex<Option<WatchService>>,
+    #[cfg(feature = "map")]
+    pub(crate) map: crate::map::MapState,
+    #[cfg(feature = "faces")]
+    pub(crate) faces: crate::faces::FaceState,
 }
 
 /// An open Lightbox library. Cheap to clone; all clones share the same state.
@@ -98,11 +113,30 @@ impl Lightbox {
     pub fn open_paths(paths: AppPaths, jobs: JobQueue, options: LightboxOptions) -> Result<Self> {
         paths.ensure()?;
         let catalog = Catalog::open(&paths.catalog())?;
+        #[cfg(feature = "video")]
+        let video = crate::video::detect(&catalog);
+        #[cfg(feature = "video")]
+        let thumbs = match &video {
+            Some(tools) => ThumbCache::with_decoder(
+                &paths.cache,
+                Arc::new(lb_video::VideoDecoder::new(tools.clone())),
+            )?,
+            None => ThumbCache::open(&paths.cache)?,
+        };
+        #[cfg(not(feature = "video"))]
         let thumbs = ThumbCache::open(&paths.cache)?;
+        #[allow(unused_mut)]
+        let mut scan_options = ScanOptions::default();
+        #[cfg(feature = "video")]
+        {
+            scan_options.caps.video = true;
+            scan_options.video_prober = video
+                .clone()
+                .map(|t| Arc::new(t) as Arc<dyn lb_media::VideoProber>);
+        }
         let clock_for_scan = options.clock.clone();
-        let scanner = Scanner::with_clock(catalog.clone(), ScanOptions::default(), move || {
-            clock_for_scan.now()
-        });
+        let scanner =
+            Scanner::with_clock(catalog.clone(), scan_options, move || clock_for_scan.now());
         let bus = EventBus::new(options.clock.clone());
         if options.spawn_event_ticker {
             bus.spawn_ticker()?;
@@ -124,6 +158,10 @@ impl Lightbox {
                 scan_cancel: AtomicBool::new(false),
                 edit_lock: Mutex::new(()),
                 watcher: Mutex::new(None),
+                #[cfg(feature = "map")]
+                map: crate::map::MapState::new(options.tile_provider),
+                #[cfg(feature = "faces")]
+                faces: crate::faces::FaceState::new(options.face_pipeline),
             }),
         })
     }

@@ -145,7 +145,7 @@ const SELECT: &str = "
 SELECT p.id, p.folder_id, f.path, p.file_name, p.media_type, p.format, p.file_size, p.file_mtime,
        p.quick_key, p.content_hash, p.orientation, p.width, p.height, p.taken_at, p.taken_at_src,
        p.camera_make, p.camera_model, p.gps_lat, p.gps_lon, p.caption, p.starred, p.rating,
-       p.hidden, p.edit_version, p.status, p.error
+       p.hidden, p.edit_version, p.status, p.error, p.duration_ms
 FROM photos p JOIN folders f ON f.id = p.folder_id";
 
 /// Rows per `IN (...)` query; keeps well under SQLite's variable limit.
@@ -202,6 +202,10 @@ fn from_row(r: &Row<'_>) -> rusqlite::Result<Photo> {
         taken_at_src,
         camera: join_camera(r.get(15)?, r.get(16)?),
         gps,
+        duration_ms: r
+            .get::<_, Option<i64>>(26)?
+            .map(|v| int_from_db(26, v))
+            .transpose()?,
         caption: r.get(19)?,
         starred: r.get(20)?,
         rating: int_from_db(21, r.get(21)?)?,
@@ -306,6 +310,22 @@ impl Catalog {
     /// Sets the hidden flag of every photo in `ids` in one transaction; returns rows changed.
     pub fn set_hidden(&self, ids: &[PhotoId], hidden: bool) -> Result<usize> {
         self.set_flag("hidden", ids, i64::from(hidden))
+    }
+
+    /// Sets (or with `None` clears) the position of every photo in `ids` in one transaction;
+    /// returns rows changed. The altitude is dropped because it described the old position.
+    pub fn set_gps(&self, ids: &[PhotoId], gps: Option<GeoPoint>) -> Result<usize> {
+        let ids = ids.to_vec();
+        self.write_tx(move |tx| {
+            let mut stmt = tx.prepare_cached(
+                "UPDATE photos SET gps_lat = ?1, gps_lon = ?2, gps_alt = NULL WHERE id = ?3",
+            )?;
+            let mut changed = 0;
+            for id in &ids {
+                changed += stmt.execute((gps.map(|g| g.lat), gps.map(|g| g.lon), id.get()))?;
+            }
+            Ok(changed)
+        })
     }
 
     /// Sets the rating (0..=5) of every photo in `ids` in one transaction. A value above 5
