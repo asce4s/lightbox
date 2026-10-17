@@ -10,7 +10,7 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 /// Suffix of the temporary files this module creates next to the destination.
 pub const TEMP_SUFFIX: &str = ".lbtmp";
 
-fn temp_path(dest: &Path) -> PathBuf {
+pub(crate) fn temp_path(dest: &Path) -> PathBuf {
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
     let name = dest
         .file_name()

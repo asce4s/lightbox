@@ -3,10 +3,12 @@
 
 mod command;
 mod info;
+mod movie;
 mod tools;
 
 pub use command::{CommandOutput, CommandRunner, CommandSpec, SystemRunner};
 pub use info::{VideoInfo, parse_ffprobe, parse_iso6709};
+pub use movie::{FPS_RANGE, MAX_SIZE, MovieSettings, SECONDS_RANGE, letterbox};
 pub use tools::{Tools, thumbnail_time};
 
 use chrono::{Local, NaiveDateTime, TimeZone};
@@ -67,6 +69,14 @@ impl VideoTools {
     /// Uses `tools` with an injected runner.
     pub fn with_runner(tools: Tools, runner: Arc<dyn CommandRunner>) -> Self {
         Self { tools, runner }
+    }
+
+    pub(crate) fn tools(&self) -> &Tools {
+        &self.tools
+    }
+
+    pub(crate) fn runner(&self) -> &Arc<dyn CommandRunner> {
+        &self.runner
     }
 
     /// Runs ffprobe on `path`.

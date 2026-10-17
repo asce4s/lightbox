@@ -20,6 +20,8 @@ mod library;
 mod lightbox;
 #[cfg(feature = "map")]
 mod map;
+#[cfg(feature = "video")]
+mod movie;
 mod paths;
 mod photos;
 mod picasa;
@@ -65,6 +67,8 @@ pub use library::LibraryService;
 pub use lightbox::{Lightbox, LightboxOptions};
 #[cfg(feature = "map")]
 pub use map::{ATTRIBUTION, CLUSTER_CELL_PX, MAX_ZOOM, MIN_ZOOM, MapService};
+#[cfg(feature = "video")]
+pub use movie::{MovieReport, MovieService, MovieSettings};
 pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};
 pub use photos::PhotoService;
 pub use photos::{MAX_CAPTION_CHARS, MAX_RATING};

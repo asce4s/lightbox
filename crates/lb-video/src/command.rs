@@ -1,7 +1,7 @@
 //! Running external tools with a timeout; faked in tests.
 
 use std::ffi::OsString;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -33,7 +33,29 @@ pub trait CommandRunner: Send + Sync + std::fmt::Debug {
     /// # Errors
     /// Fails when the program cannot be started or exceeds its time limit.
     fn run(&self, spec: &CommandSpec) -> io::Result<CommandOutput>;
+
+    /// Runs `spec` while `feed` writes to its standard input; the input is closed when `feed`
+    /// returns. Used to pipe raw frames into ffmpeg.
+    ///
+    /// # Errors
+    /// Fails when the program cannot be started, when `feed` fails although the program
+    /// succeeded, or when the program does not finish in time. A program that exits with an
+    /// error is reported through [`CommandOutput::success`] instead.
+    fn run_with_input(
+        &self,
+        spec: &CommandSpec,
+        feed: &mut dyn FnMut(&mut dyn Write) -> io::Result<()>,
+    ) -> io::Result<CommandOutput> {
+        let _ = (spec, feed);
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "this runner cannot pipe input",
+        ))
+    }
 }
+
+/// How long ffmpeg may take to finish encoding after its input is closed.
+const FINISH_TIMEOUT: Duration = Duration::from_secs(600);
 
 /// Spawns real processes and kills them after a time limit.
 #[derive(Debug, Clone, Copy)]
@@ -91,5 +113,55 @@ impl CommandRunner for SystemRunner {
             stdout: collect(out),
             stderr: collect(err),
         })
+    }
+
+    fn run_with_input(
+        &self,
+        spec: &CommandSpec,
+        feed: &mut dyn FnMut(&mut dyn Write) -> io::Result<()>,
+    ) -> io::Result<CommandOutput> {
+        let mut child = Command::new(&spec.program)
+            .args(&spec.args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let out = child.stdout.take().map(drain);
+        let err = child.stderr.take().map(drain);
+        let fed = match child.stdin.take() {
+            Some(mut stdin) => {
+                let result = feed(&mut stdin);
+                drop(stdin);
+                result
+            }
+            None => Ok(()),
+        };
+        let started = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait()? {
+                break status;
+            }
+            if started.elapsed() > FINISH_TIMEOUT.max(self.timeout) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    format!("{} did not finish in time", spec.program.display()),
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        let collect = |h: Option<std::thread::JoinHandle<Vec<u8>>>| {
+            h.and_then(|h| h.join().ok()).unwrap_or_default()
+        };
+        let output = CommandOutput {
+            success: status.success(),
+            stdout: collect(out),
+            stderr: collect(err),
+        };
+        match fed {
+            Err(e) if output.success => Err(e),
+            _ => Ok(output),
+        }
     }
 }

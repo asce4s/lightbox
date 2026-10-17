@@ -545,3 +545,47 @@ fn cli_picasa_import_e2e() {
         .assert()
         .code(1);
 }
+
+#[test]
+fn cli_movie_e2e() {
+    if !["ffmpeg", "ffprobe"].iter().all(|tool| {
+        std::process::Command::new(tool)
+            .arg("-version")
+            .output()
+            .is_ok_and(|o| o.status.success())
+    }) {
+        eprintln!("ffmpeg not found; skipping");
+        return;
+    }
+    let env = Env::empty();
+    for (i, n) in ["a", "b"].iter().enumerate() {
+        write_jpeg(&env.photos.path().join(format!("{n}.jpg")), i as u8);
+    }
+    env.json(&["roots", "add", env.photos.path().to_str().unwrap()]);
+    let ids = env.all();
+    let out_dir = tempfile::tempdir().unwrap();
+    let out = out_dir.path().join("m.mp4");
+    let (a, b) = (s(ids[0]), s(ids[1]));
+    let r = env.json(&[
+        "movie",
+        &a,
+        &b,
+        "--out",
+        out.to_str().unwrap(),
+        "--size",
+        "320x180",
+        "--fps",
+        "10",
+        "--seconds",
+        "0.5",
+    ]);
+    assert_eq!(r["photos"], 2);
+    assert!(std::fs::metadata(&out).unwrap().len() > 0);
+
+    env.cmd(&["movie", &a, "--out", out.to_str().unwrap(), "--size", "big"])
+        .assert()
+        .code(1);
+    env.cmd(&["movie", "99999", "--out", out.to_str().unwrap()])
+        .assert()
+        .code(1);
+}

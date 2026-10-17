@@ -147,6 +147,7 @@ lightbox-cli render 12 preview.png --max-edge 1280
 lightbox-cli export 12 13 --to ~/Exports --long-edge 2048 --quality 85
 lightbox-cli dupes                        # exact and similar photos
 lightbox-cli collage grid 12 13 14 --out collage.jpg --size 1920x1080
+lightbox-cli movie 12 13 14 --out show.mp4 --seconds 3 --fps 30   # slideshow MP4 (needs ffmpeg)
 lightbox-cli thumbs warm --size M
 lightbox-cli picasa-import ~/Pictures     # legacy .picasa.ini metadata (--overwrite, --dry-run)
 lightbox-cli doctor                       # environment report and catalog integrity check
