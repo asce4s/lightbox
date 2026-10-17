@@ -12,3 +12,13 @@ workspace = true
 lb-core = { path = "../lb-core" }
 lb-media = { path = "../lb-media" }
 lb-imaging = { path = "../lb-imaging" }
+blake3 = { workspace = true }
+image = { workspace = true, features = ["jpeg"] }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+lb-testkit = { path = "../lb-testkit" }
+tempfile = { workspace = true }
+image = { workspace = true, features = ["jpeg", "png"] }
