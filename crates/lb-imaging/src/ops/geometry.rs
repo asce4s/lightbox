@@ -73,7 +73,7 @@ pub fn straighten_source_point(
     )
 }
 
-fn sample_bilinear(img: &Rgba32FImage, x: f64, y: f64) -> Rgba<f32> {
+pub(crate) fn sample_bilinear(img: &Rgba32FImage, x: f64, y: f64) -> Rgba<f32> {
     let (w, h) = img.dimensions();
     let (fx, fy) = (x - 0.5, y - 0.5);
     let (x0f, y0f) = (fx.floor(), fy.floor());

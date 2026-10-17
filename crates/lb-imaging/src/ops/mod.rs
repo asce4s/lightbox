@@ -4,6 +4,7 @@ pub mod auto;
 pub mod effects;
 pub mod geometry;
 pub mod hist;
+pub mod retouch;
 pub mod tuning;
 
 use image::Rgba32FImage;
@@ -125,11 +126,8 @@ pub fn apply_op(mut img: Rgba32FImage, op: &EditOp, ctx: &OpCtx) -> Rgba32FImage
             effects::red_eye(&mut img, regions);
             img
         }
-        other => {
-            tracing::warn!(
-                op = other.name(),
-                "edit op is not implemented yet; skipping"
-            );
+        EditOp::Retouch { spots } => {
+            retouch::retouch(&mut img, spots);
             img
         }
     }

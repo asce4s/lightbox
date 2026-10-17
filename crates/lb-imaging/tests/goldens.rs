@@ -278,3 +278,29 @@ fn golden_red_eye() {
         &EditOp::RedEye { regions },
     );
 }
+
+fn blemished_gradient() -> Rgba32FImage {
+    let mut img = common::gradient_rgb_512();
+    for (x, y, p) in img.enumerate_pixels_mut() {
+        let (dx, dy) = (x as f32 - 256.0, y as f32 - 256.0);
+        if dx * dx + dy * dy <= 22.0 * 22.0 {
+            p.0 = [0.25, 0.1, 0.1, 1.0];
+        }
+    }
+    img
+}
+
+#[test]
+fn golden_retouch_patch() {
+    use lb_core::RetouchSpot;
+    let op = EditOp::Retouch {
+        spots: vec![RetouchSpot {
+            src_x: 0.68,
+            src_y: 0.5,
+            dst_x: 0.5,
+            dst_y: 0.5,
+            radius: 0.06,
+        }],
+    };
+    golden("retouch", "golden_retouch_patch", blemished_gradient(), &op);
+}
