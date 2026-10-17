@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 mod albums;
+mod doctor;
 mod edits;
 mod error;
 mod events;
@@ -20,6 +21,7 @@ mod thumbs;
 pub mod vm;
 
 pub use albums::AlbumService;
+pub use doctor::{DoctorReport, FACE_MODELS_ENV};
 pub use edits::EditService;
 pub use error::{AppError, Result};
 pub use events::{AppEvent, COALESCE_WINDOW, EventBus};
@@ -29,6 +31,9 @@ pub use export::{
 };
 pub use files::{DeleteReport, MoveReport};
 pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
+pub use lb_jobs::JobQueue;
+pub use lb_scan::ScanSummary;
+pub use lb_thumbs::ThumbSize;
 pub use library::LibraryService;
 pub use lightbox::{Lightbox, LightboxOptions};
 pub use paths::{AppPaths, LIGHTBOX_HOME_ENV};

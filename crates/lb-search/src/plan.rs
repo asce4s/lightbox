@@ -276,7 +276,8 @@ fn rating_clause(value: &str) -> Option<Clause> {
 }
 
 const HAS_FACES: &str = "EXISTS (SELECT 1 FROM faces fa WHERE fa.photo_id = p.id)";
-const HAS_EDITS: &str = "EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id)";
+const HAS_EDITS: &str =
+    "EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id AND json_array_length(e.ops_json) > 0)";
 const HAS_TAGS: &str = "EXISTS (SELECT 1 FROM photo_tags pt WHERE pt.photo_id = p.id)";
 
 impl Builder {

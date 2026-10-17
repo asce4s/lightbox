@@ -262,7 +262,7 @@ expression: out
   args: []
   fts:  None
 "has:edits"
-  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id))
+  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id AND json_array_length(e.ops_json) > 0))
   args: []
   fts:  None
 "has:tags"
@@ -288,7 +288,7 @@ expression: out
   fts:  None
   include: hidden=true missing=false
 "is:edited"
-  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id))
+  sql:  (EXISTS (SELECT 1 FROM edits e WHERE e.photo_id = p.id AND json_array_length(e.ops_json) > 0))
   args: []
   fts:  None
 "is:video"
