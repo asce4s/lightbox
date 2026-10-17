@@ -13,5 +13,8 @@ pub use backup::{
 };
 pub use db::Catalog;
 pub use error::{CatalogError, Result};
-pub use repo::{EditRecord, IndexedFile, NewFolder, PhotoUpsert, UpsertOutcome};
+pub use repo::{
+    EditRecord, IndexedFile, NewFolder, PhotoQuery, PhotoUpsert, QueryRow, QuerySource,
+    SqlFragment, UpsertOutcome,
+};
 pub use schema::LATEST_SCHEMA_VERSION;

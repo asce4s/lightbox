@@ -3,6 +3,17 @@
 use crate::{PhotoId, error::string_enum};
 use indexmap::IndexSet;
 
+/// A bound SQL parameter produced by the search planner and executed by the catalog.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum SqlValue {
+    /// An integer.
+    Int(i64),
+    /// A floating-point number.
+    Real(f64),
+    /// Text.
+    Text(String),
+}
+
 string_enum!(
     /// Order of photos in the grid.
     SortOrder, "sort order", {

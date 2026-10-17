@@ -20,4 +20,4 @@ pub use library::{
     normalize_tag_name,
 };
 pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
-pub use query::{GroupBy, Selection, SortOrder};
+pub use query::{GroupBy, Selection, SortOrder, SqlValue};
