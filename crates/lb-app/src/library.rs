@@ -173,6 +173,12 @@ impl LibraryService {
         self.lb.inner.watcher.lock().take();
     }
 
+    /// Whether [`Self::start_watching`] is currently running.
+    #[must_use]
+    pub fn is_watching(&self) -> bool {
+        self.lb.inner.watcher.lock().is_some()
+    }
+
     /// Re-synchronises the watcher with the configured roots after a root change.
     pub fn sync_watcher(&self) -> Result<()> {
         if let Some(w) = self.lb.inner.watcher.lock().as_ref() {

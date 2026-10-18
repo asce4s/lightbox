@@ -13,7 +13,7 @@ use lb_app::vm::{
     ConfirmVm, ExportDialogVm, LibraryVm, Modifiers, NavKey, RenameVm, SidebarKey, SidebarVm,
     ZOOM_RANGE,
 };
-use lb_app::{AppEvent, EventReceiver, Lightbox, ThemeChoice, ThumbSize};
+use lb_app::{AppEvent, EventReceiver, InstanceServer, Launch, Lightbox, ThemeChoice, ThumbSize};
 use lb_core::{AlbumId, PhotoId};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -113,6 +113,7 @@ pub struct LightboxWindow {
     pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
     pub(crate) band: Option<crate::band::BandDrag>,
     pub(crate) grid_bounds: crate::band::GridBounds,
+    instance: Option<InstanceServer>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -192,6 +193,7 @@ impl LightboxWindow {
             timeline_drag: None,
             band: None,
             grid_bounds: crate::band::GridBounds::default(),
+            instance: None,
             _subscriptions: subscriptions,
         };
         if ticker {
@@ -208,8 +210,24 @@ impl LightboxWindow {
         this
     }
 
-    /// Opens the library window on `cx`. [`gpui_kit::init`] must have run.
-    pub fn open(app: Lightbox, cx: &mut App) -> Result<(AnyWindowHandle, Entity<Self>)> {
+    /// Opens the library window on `cx` and drains `instance` from the pump.
+    /// [`gpui_kit::init`] must have run.
+    pub fn open(
+        app: Lightbox,
+        instance: InstanceServer,
+        cx: &mut App,
+    ) -> Result<(AnyWindowHandle, Entity<Self>)> {
+        gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
+            cx.new(|cx| {
+                let mut this = Self::new(app, true, window, cx);
+                this.instance = Some(instance);
+                this
+            })
+        })
+    }
+
+    /// Opens a library window that does not own the instance endpoint.
+    pub fn open_library(app: Lightbox, cx: &mut App) -> Result<(AnyWindowHandle, Entity<Self>)> {
         gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
             cx.new(|cx| Self::new(app, true, window, cx))
         })
@@ -299,6 +317,7 @@ impl LightboxWindow {
     /// Drains application events and applies a due search. Called by the ticker and by tests.
     pub fn pump(&mut self, cx: &mut Context<Self>) {
         let mut changed = self.vm.tick();
+        changed |= self.drain_instance(cx);
         changed |= self.tick_slideshow();
         let mut refresh_sidebar = false;
         let mut viewer_stale = false;
@@ -394,6 +413,25 @@ impl LightboxWindow {
         if changed || self.viewer_needs_frame() {
             cx.notify();
         }
+    }
+
+    fn drain_instance(&mut self, cx: &mut Context<Self>) -> bool {
+        let Some(instance) = &self.instance else {
+            return false;
+        };
+        let mut launches = Vec::new();
+        while let Some(launch) = instance.poll() {
+            launches.push(launch);
+        }
+        if launches.is_empty() {
+            return false;
+        }
+        for launch in launches {
+            if let Launch::View { paths, .. } = launch {
+                self.open_external_paths(&paths, cx);
+            }
+        }
+        true
     }
 
     /// The cached thumbnail for a grid cell at the current zoom, requesting it once if missing.

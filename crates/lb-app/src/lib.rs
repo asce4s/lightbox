@@ -16,6 +16,8 @@ mod faces;
 mod files;
 mod history;
 mod import;
+mod instance;
+mod launch;
 mod library;
 mod lightbox;
 #[cfg(feature = "map")]
@@ -61,6 +63,11 @@ pub use history::{HISTORY_LIMIT, HistoryAction, HistoryEntry, HistoryService};
 pub use import::{
     FileCopier, FolderNaming, IMPORT_TEMP_SUFFIX, ImportCandidate, ImportHandle, ImportOptions,
     ImportReport, ImportService, ImportedFile, StdCopier,
+};
+pub use instance::{Acquire, InstanceServer, acquire};
+pub use launch::{
+    Launch, MACOS_OPEN_URL_WAIT, MacosDecision, Platform, apply_startup, file_url, macos_route,
+    open_library_from_viewer, parse_launch, unregister_file_types,
 };
 pub use lb_jobs::JobQueue;
 pub use lb_scan::ScanSummary;

@@ -21,6 +21,7 @@ const ALL_LIBS: &[&str] = &[
     "lb-video",
     "lb-geo",
     "lb-picasa",
+    "lb-ipc",
     "lb-app",
 ];
 
@@ -39,7 +40,7 @@ const FORBIDDEN_EXTERNAL_EXACT: &[&str] = &["gpui"];
 fn allowed_workspace_deps(krate: &str) -> Option<&'static [&'static str]> {
     Some(match krate {
         "lb-core" => &[],
-        "lb-catalog" | "lb-media" | "lb-jobs" | "lb-search" | "lb-geo" | "lb-picasa" => {
+        "lb-catalog" | "lb-media" | "lb-jobs" | "lb-search" | "lb-geo" | "lb-picasa" | "lb-ipc" => {
             &["lb-core"]
         }
         "lb-imaging" => &["lb-core", "lb-media"],

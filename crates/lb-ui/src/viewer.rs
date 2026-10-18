@@ -185,6 +185,36 @@ impl LightboxWindow {
         cx.notify();
     }
 
+    /// Opens the viewer on files from a second launch. There is no thumbnail to animate from.
+    pub fn open_external_paths(&mut self, paths: &[PathBuf], cx: &mut Context<Self>) {
+        let Ok(vm) = ViewerVm::open_paths(&self.app, paths) else {
+            return;
+        };
+        let now = self.now();
+        let error = entry_error(&vm.current_entry().path);
+        let opened_id = vm.current();
+        self.viewer = Some(ViewerState {
+            vm,
+            stage: Stage::new(),
+            photo: None,
+            stack: EditStack::new(),
+            opened_id,
+            opened_at: now,
+            closing: false,
+            error,
+            outgoing: None,
+            press: None,
+        });
+        self.opened = Some(opened_id);
+        self.viewer_reload(cx);
+        let fit = self.current_fit();
+        if let Some(v) = &mut self.viewer {
+            v.vm.set_stage(self.viewport);
+            v.vm.begin_open(now, None, fit);
+        }
+        cx.notify();
+    }
+
     pub(crate) fn viewer_reload(&mut self, cx: &mut Context<Self>) {
         let Some(v) = &self.viewer else { return };
         let id = v.vm.current();
