@@ -280,12 +280,7 @@ pub enum WheelAction {
     Navigate,
 }
 
-/// Previous OS file-type defaults, kept so they can be restored (SPEC-VIEWER §V10).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SavedDefaults {
-    /// Backend-specific payload. Empty until registration stores one.
-    pub payload: String,
-}
+pub use lb_assoc::SavedDefaults;
 
 /// Viewer behaviour and file-type selection (SPEC-VIEWER §V11).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

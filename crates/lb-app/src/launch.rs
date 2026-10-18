@@ -178,10 +178,6 @@ pub fn open_library_from_viewer(lb: &Lightbox) -> Result<()> {
 }
 
 /// Removes the file-type registrations this install added.
-///
-/// The platform executors land in M13.10. The flag is recognised now so a second
-/// binary can already parse it.
 pub fn unregister_file_types() -> Result<()> {
-    tracing::info!("file type registration is removed by the association service");
-    Ok(())
+    crate::assoc::unregister_current()
 }

@@ -31,6 +31,7 @@ lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
 lb-ipc = { path = "../lb-ipc" }
+lb-assoc = { path = "../lb-assoc" }
 blake3 = { workspace = true }
 percent-encoding = { workspace = true }
 chrono = { workspace = true }

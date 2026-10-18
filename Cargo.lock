@@ -4154,6 +4154,7 @@ dependencies = [
  "directories",
  "image",
  "indexmap",
+ "lb-assoc",
  "lb-catalog",
  "lb-core",
  "lb-faces",
@@ -4180,6 +4181,19 @@ dependencies = [
  "tracing",
  "trash",
  "walkdir",
+]
+
+[[package]]
+name = "lb-assoc"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "winreg",
 ]
 
 [[package]]
@@ -9551,6 +9565,7 @@ dependencies = [
  "anyhow",
  "directories",
  "image",
+ "lb-assoc",
  "lb-faces",
  "lb-testkit",
  "serde",

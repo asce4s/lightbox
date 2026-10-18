@@ -1,0 +1,156 @@
+---
+source: crates/lb-assoc/tests/assoc.rs
+expression: text
+---
+app_key: Lightbox
+notify: true
+writes:
+  Software\Classes\Lightbox.Image.jpeg\(Default) = SZ JPEG image (Lightbox)
+  Software\Classes\Lightbox.Image.jpeg\FriendlyTypeName = SZ JPEG image
+  Software\Classes\Lightbox.Image.jpeg\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.jpeg\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.jpeg\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\Lightbox.Image.png\(Default) = SZ PNG image (Lightbox)
+  Software\Classes\Lightbox.Image.png\FriendlyTypeName = SZ PNG image
+  Software\Classes\Lightbox.Image.png\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.png\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.png\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\Lightbox.Image.gif\(Default) = SZ GIF image (Lightbox)
+  Software\Classes\Lightbox.Image.gif\FriendlyTypeName = SZ GIF image
+  Software\Classes\Lightbox.Image.gif\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.gif\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.gif\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\Lightbox.Image.webp\(Default) = SZ WebP image (Lightbox)
+  Software\Classes\Lightbox.Image.webp\FriendlyTypeName = SZ WebP image
+  Software\Classes\Lightbox.Image.webp\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.webp\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.webp\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\Lightbox.Image.bmp\(Default) = SZ BMP image (Lightbox)
+  Software\Classes\Lightbox.Image.bmp\FriendlyTypeName = SZ BMP image
+  Software\Classes\Lightbox.Image.bmp\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.bmp\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.bmp\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\Lightbox.Image.tiff\(Default) = SZ TIFF image (Lightbox)
+  Software\Classes\Lightbox.Image.tiff\FriendlyTypeName = SZ TIFF image
+  Software\Classes\Lightbox.Image.tiff\DefaultIcon\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe",0
+  Software\Classes\Lightbox.Image.tiff\shell\open\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Lightbox.Image.tiff\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Classes\.jpg\OpenWithProgids\Lightbox.Image.jpeg = NONE
+  Software\Classes\.jpeg\OpenWithProgids\Lightbox.Image.jpeg = NONE
+  Software\Classes\.jpe\OpenWithProgids\Lightbox.Image.jpeg = NONE
+  Software\Classes\.png\OpenWithProgids\Lightbox.Image.png = NONE
+  Software\Classes\.gif\OpenWithProgids\Lightbox.Image.gif = NONE
+  Software\Classes\.webp\OpenWithProgids\Lightbox.Image.webp = NONE
+  Software\Classes\.bmp\OpenWithProgids\Lightbox.Image.bmp = NONE
+  Software\Classes\.tif\OpenWithProgids\Lightbox.Image.tiff = NONE
+  Software\Classes\.tiff\OpenWithProgids\Lightbox.Image.tiff = NONE
+  Software\Classes\Applications\lightbox.exe\FriendlyAppName = SZ Lightbox Photo Viewer
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.jpg = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.jpeg = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.jpe = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.png = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.gif = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.webp = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.bmp = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.tif = NONE
+  Software\Classes\Applications\lightbox.exe\SupportedTypes\.tiff = NONE
+  Software\Classes\Applications\lightbox.exe\shell\open\command\(Default) = SZ "C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  Software\Lightbox\Capabilities\ApplicationName = SZ Lightbox Photo Viewer
+  Software\Lightbox\Capabilities\ApplicationDescription = SZ View and organise photos
+  Software\Lightbox\Capabilities\FileAssociations\.jpg = SZ Lightbox.Image.jpeg
+  Software\Lightbox\Capabilities\FileAssociations\.jpeg = SZ Lightbox.Image.jpeg
+  Software\Lightbox\Capabilities\FileAssociations\.jpe = SZ Lightbox.Image.jpeg
+  Software\Lightbox\Capabilities\FileAssociations\.png = SZ Lightbox.Image.png
+  Software\Lightbox\Capabilities\FileAssociations\.gif = SZ Lightbox.Image.gif
+  Software\Lightbox\Capabilities\FileAssociations\.webp = SZ Lightbox.Image.webp
+  Software\Lightbox\Capabilities\FileAssociations\.bmp = SZ Lightbox.Image.bmp
+  Software\Lightbox\Capabilities\FileAssociations\.tif = SZ Lightbox.Image.tiff
+  Software\Lightbox\Capabilities\FileAssociations\.tiff = SZ Lightbox.Image.tiff
+  Software\RegisteredApplications\Lightbox = SZ Software\Lightbox\Capabilities
+owned:
+  Software\Classes\Lightbox.Image.jpeg
+  Software\Classes\Lightbox.Image.png
+  Software\Classes\Lightbox.Image.gif
+  Software\Classes\Lightbox.Image.webp
+  Software\Classes\Lightbox.Image.bmp
+  Software\Classes\Lightbox.Image.tiff
+  Software\Classes\Applications\lightbox.exe
+  Software\Lightbox
+manifest:
+  V	Software\Classes\Lightbox.Image.jpeg		SZ	JPEG image (Lightbox)
+  V	Software\Classes\Lightbox.Image.jpeg	FriendlyTypeName	SZ	JPEG image
+  V	Software\Classes\Lightbox.Image.jpeg\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.jpeg\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.jpeg\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\Lightbox.Image.png		SZ	PNG image (Lightbox)
+  V	Software\Classes\Lightbox.Image.png	FriendlyTypeName	SZ	PNG image
+  V	Software\Classes\Lightbox.Image.png\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.png\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.png\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\Lightbox.Image.gif		SZ	GIF image (Lightbox)
+  V	Software\Classes\Lightbox.Image.gif	FriendlyTypeName	SZ	GIF image
+  V	Software\Classes\Lightbox.Image.gif\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.gif\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.gif\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\Lightbox.Image.webp		SZ	WebP image (Lightbox)
+  V	Software\Classes\Lightbox.Image.webp	FriendlyTypeName	SZ	WebP image
+  V	Software\Classes\Lightbox.Image.webp\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.webp\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.webp\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\Lightbox.Image.bmp		SZ	BMP image (Lightbox)
+  V	Software\Classes\Lightbox.Image.bmp	FriendlyTypeName	SZ	BMP image
+  V	Software\Classes\Lightbox.Image.bmp\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.bmp\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.bmp\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\Lightbox.Image.tiff		SZ	TIFF image (Lightbox)
+  V	Software\Classes\Lightbox.Image.tiff	FriendlyTypeName	SZ	TIFF image
+  V	Software\Classes\Lightbox.Image.tiff\DefaultIcon		SZ	"C:\Program Files\Lightbox\lightbox.exe",0
+  V	Software\Classes\Lightbox.Image.tiff\shell\open	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Lightbox.Image.tiff\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Classes\.jpg\OpenWithProgids	Lightbox.Image.jpeg	NONE	
+  V	Software\Classes\.jpeg\OpenWithProgids	Lightbox.Image.jpeg	NONE	
+  V	Software\Classes\.jpe\OpenWithProgids	Lightbox.Image.jpeg	NONE	
+  V	Software\Classes\.png\OpenWithProgids	Lightbox.Image.png	NONE	
+  V	Software\Classes\.gif\OpenWithProgids	Lightbox.Image.gif	NONE	
+  V	Software\Classes\.webp\OpenWithProgids	Lightbox.Image.webp	NONE	
+  V	Software\Classes\.bmp\OpenWithProgids	Lightbox.Image.bmp	NONE	
+  V	Software\Classes\.tif\OpenWithProgids	Lightbox.Image.tiff	NONE	
+  V	Software\Classes\.tiff\OpenWithProgids	Lightbox.Image.tiff	NONE	
+  V	Software\Classes\Applications\lightbox.exe	FriendlyAppName	SZ	Lightbox Photo Viewer
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.jpg	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.jpeg	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.jpe	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.png	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.gif	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.webp	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.bmp	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.tif	NONE	
+  V	Software\Classes\Applications\lightbox.exe\SupportedTypes	.tiff	NONE	
+  V	Software\Classes\Applications\lightbox.exe\shell\open\command		SZ	"C:\Program Files\Lightbox\lightbox.exe" view "%1"
+  V	Software\Lightbox\Capabilities	ApplicationName	SZ	Lightbox Photo Viewer
+  V	Software\Lightbox\Capabilities	ApplicationDescription	SZ	View and organise photos
+  V	Software\Lightbox\Capabilities\FileAssociations	.jpg	SZ	Lightbox.Image.jpeg
+  V	Software\Lightbox\Capabilities\FileAssociations	.jpeg	SZ	Lightbox.Image.jpeg
+  V	Software\Lightbox\Capabilities\FileAssociations	.jpe	SZ	Lightbox.Image.jpeg
+  V	Software\Lightbox\Capabilities\FileAssociations	.png	SZ	Lightbox.Image.png
+  V	Software\Lightbox\Capabilities\FileAssociations	.gif	SZ	Lightbox.Image.gif
+  V	Software\Lightbox\Capabilities\FileAssociations	.webp	SZ	Lightbox.Image.webp
+  V	Software\Lightbox\Capabilities\FileAssociations	.bmp	SZ	Lightbox.Image.bmp
+  V	Software\Lightbox\Capabilities\FileAssociations	.tif	SZ	Lightbox.Image.tiff
+  V	Software\Lightbox\Capabilities\FileAssociations	.tiff	SZ	Lightbox.Image.tiff
+  V	Software\RegisteredApplications	Lightbox	SZ	Software\Lightbox\Capabilities
+  K	Software\Classes\Lightbox.Image.jpeg
+  K	Software\Classes\Lightbox.Image.png
+  K	Software\Classes\Lightbox.Image.gif
+  K	Software\Classes\Lightbox.Image.webp
+  K	Software\Classes\Lightbox.Image.bmp
+  K	Software\Classes\Lightbox.Image.tiff
+  K	Software\Classes\Applications\lightbox.exe
+  K	Software\Lightbox
+make_default:
+app_key: Lightbox
+notify: false
+settings: ms-settings:defaultapps?registeredAppUser=Lightbox
+writes:
+owned:
+manifest:

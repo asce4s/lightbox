@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 mod albums;
+mod assoc;
 mod atomic;
 mod collage;
 mod crash;
@@ -41,6 +42,7 @@ pub mod vm;
 mod xmp;
 
 pub use albums::AlbumService;
+pub use assoc::{AssocService, register_available_viewer};
 pub use atomic::{TEMP_SUFFIX, write_atomic, write_bytes_atomic};
 pub use collage::{
     CollageLayout, CollageOptions, CollageService, CollageSize, CreatedCollage, PREVIEW_EDGE,

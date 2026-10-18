@@ -64,28 +64,11 @@ impl Target {
     }
 }
 
-/// `Contents/Info.plist` of the macOS bundle.
+/// `Contents/Info.plist` of the macOS bundle, including document types for the
+/// formats the default build can decode (SPEC-VIEWER §V10.4).
 pub fn info_plist(version: &str) -> String {
-    format!(
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleName</key><string>Lightbox</string>
-  <key>CFBundleDisplayName</key><string>Lightbox</string>
-  <key>CFBundleIdentifier</key><string>{BUNDLE_ID}</string>
-  <key>CFBundleExecutable</key><string>lightbox</string>
-  <key>CFBundleIconFile</key><string>icon.png</string>
-  <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>{version}</string>
-  <key>CFBundleVersion</key><string>{version}</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
-  <key>NSHighResolutionCapable</key><true/>
-  <key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
-</dict>
-</plist>
-"#
-    )
+    debug_assert_eq!(BUNDLE_ID, lb_assoc::BUNDLE_ID);
+    lb_assoc::info_plist(version, &lb_assoc::base_formats())
 }
 
 /// The freedesktop entry used by the Linux archive and the AppDir.

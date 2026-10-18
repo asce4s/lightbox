@@ -13,6 +13,7 @@ anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 lb-testkit = { path = "../crates/lb-testkit" }
+lb-assoc = { path = "../crates/lb-assoc" }
 lb-faces = { path = "../crates/lb-faces" }
 directories = { workspace = true }
 ureq = { workspace = true }

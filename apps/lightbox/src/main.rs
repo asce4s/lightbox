@@ -45,6 +45,9 @@ fn main() {
             std::process::exit(2);
         }
     };
+    if let Err(error) = lb_app::register_available_viewer() {
+        tracing::warn!(%error, "could not register as an available photo viewer");
+    }
     if matches!(launch, Launch::Library) {
         let background = app.clone();
         std::thread::spawn(move || {
