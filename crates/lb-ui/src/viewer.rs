@@ -71,6 +71,24 @@ pub(crate) struct ViewerState {
 impl LightboxWindow {
     // ---- state ----
 
+    /// File name shown in the top bar and the standalone window title.
+    pub(crate) fn viewer_file_name(&self) -> String {
+        self.viewer
+            .as_ref()
+            .map(entry_file_name)
+            .unwrap_or_default()
+    }
+
+    /// `{file name} — Lightbox`, the standalone window title (SPEC-VIEWER §V3.2).
+    pub fn standalone_title(&self) -> String {
+        let name = self.viewer_file_name();
+        if name.is_empty() {
+            "Lightbox".to_owned()
+        } else {
+            format!("{name} — Lightbox")
+        }
+    }
+
     /// The viewer's view-model while the viewer is open.
     pub fn viewer(&self) -> Option<&ViewerVm> {
         self.viewer.as_ref().map(|v| &v.vm)
@@ -616,6 +634,11 @@ impl LightboxWindow {
             self.vm.click(id, Modifiers::NONE);
             self.reveal_focused();
         }
+        if self.standalone {
+            window.remove_window();
+            cx.notify();
+            return;
+        }
         window.focus(&self.focus, cx);
         cx.notify();
     }
@@ -647,6 +670,7 @@ impl LightboxWindow {
             "home" => self.viewer_home(cx),
             "end" => self.viewer_end(cx),
             "escape" => self.close_viewer(window, cx),
+            "f" | "f11" if self.standalone && !cmd => window.toggle_fullscreen(),
             "i" => self.viewer_toggle_info(cx),
             "+" | "=" => self.viewer_zoom_in(cx),
             "-" => self.viewer_zoom_out(cx),
@@ -794,18 +818,7 @@ impl LightboxWindow {
             return div().into_any_element();
         };
         let presented = v.vm.presented(now);
-        let name = v
-            .photo
-            .as_ref()
-            .and_then(|p| p.path.file_name())
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| {
-                v.vm.current_entry()
-                    .path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            });
+        let name = entry_file_name(v);
         let counter = format!("{} / {}", v.vm.index() + 1, v.vm.filmstrip().len());
         let info_open = v.vm.info_visible();
         let (has_prev, has_next) = (v.vm.has_prev(), v.vm.has_next());
@@ -1337,6 +1350,20 @@ fn shown_for(v: &ViewerState, id: PhotoId) -> Option<&lb_app::PreviewFile> {
     }
     let prefix = format!("{}:", id.get());
     v.stage.shown_if(|k| k.starts_with(&prefix))
+}
+
+fn entry_file_name(v: &ViewerState) -> String {
+    v.photo
+        .as_ref()
+        .and_then(|p| p.path.file_name())
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| {
+            v.vm.current_entry()
+                .path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        })
 }
 
 /// The text lines of an info panel.

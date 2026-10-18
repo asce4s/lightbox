@@ -32,6 +32,19 @@ impl InstanceServer {
     }
 }
 
+/// Sends `launch` to the instance that owns `data_dir`.
+pub fn forward_launch(data_dir: &Path, launch: &Launch) -> Result<()> {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let response = lb_ipc::send(data_dir, &launch_to_request(launch, &cwd)).map_err(ipc_error)?;
+    if response.ok {
+        Ok(())
+    } else {
+        Err(AppError::Invalid(response.error.unwrap_or_else(|| {
+            "the running Lightbox rejected the launch".to_owned()
+        })))
+    }
+}
+
 /// Connects to a running instance or becomes the server.
 ///
 /// When `bind` loses a race, `connect` is retried three times, 50 ms apart.

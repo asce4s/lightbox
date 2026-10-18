@@ -64,7 +64,7 @@ pub use import::{
     FileCopier, FolderNaming, IMPORT_TEMP_SUFFIX, ImportCandidate, ImportHandle, ImportOptions,
     ImportReport, ImportService, ImportedFile, StdCopier,
 };
-pub use instance::{Acquire, InstanceServer, acquire};
+pub use instance::{Acquire, InstanceServer, acquire, forward_launch};
 pub use launch::{
     Launch, MACOS_OPEN_URL_WAIT, MacosDecision, Platform, apply_startup, file_url, macos_route,
     open_library_from_viewer, parse_launch, unregister_file_types,
@@ -88,10 +88,10 @@ pub use search::{
     FilterChips, Group, GroupKey, MonthBucket, PhotoQueryResult, SearchService, ViewQuery,
 };
 pub use settings::{
-    BackdropMode, ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings,
-    MotionLevel, SETTINGS_KEYS, SavedDefaults, Settings, SettingsService, SlideshowSettings,
-    ThemeChoice, ThumbChoice, ThumbSettings, Transition, VideoSettings, ViewerSettings,
-    WheelAction, XmpSettings,
+    BackdropMode, ExportSettings, FacesSettings, GridSettings, HostPlatform, LibrarySettings,
+    MapSettings, MotionLevel, ResolvedBackdrop, SETTINGS_KEYS, SavedDefaults, Settings,
+    SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings, Transition,
+    VideoSettings, ViewerSettings, WheelAction, XmpSettings, resolve_standalone_backdrop,
 };
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};

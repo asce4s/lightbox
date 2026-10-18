@@ -205,6 +205,55 @@ pub enum BackdropMode {
     Dim,
 }
 
+/// Operating system used to resolve `viewer.backdrop = auto` (SPEC-VIEWER §V6.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostPlatform {
+    /// macOS.
+    Macos,
+    /// Windows.
+    Windows,
+    /// Linux and other Unix hosts. `auto` stays ambient: Wayland blur is optional and X11 does not blur.
+    Linux,
+}
+
+/// Backdrop actually drawn for a standalone window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResolvedBackdrop {
+    /// OS window blur plus a tint. Overlay windows never use this.
+    DesktopBlur,
+    /// Ambient texture, opaque window.
+    Ambient,
+    /// Flat dark fill.
+    Dim,
+}
+
+/// Resolves `viewer.backdrop` for a standalone window.
+///
+/// Overlay windows always use [`ResolvedBackdrop::Ambient`] for `desktop_blur` because GPUI
+/// cannot blur the library behind an in-window layer. `auto` is desktop blur on macOS and
+/// Windows unless reduce-transparency is on, and ambient on Linux.
+#[must_use]
+pub fn resolve_standalone_backdrop(
+    mode: BackdropMode,
+    platform: HostPlatform,
+    reduce_transparency: bool,
+) -> ResolvedBackdrop {
+    let mode = match mode {
+        BackdropMode::Auto if reduce_transparency => BackdropMode::Ambient,
+        BackdropMode::Auto => match platform {
+            HostPlatform::Macos | HostPlatform::Windows => BackdropMode::DesktopBlur,
+            HostPlatform::Linux => BackdropMode::Ambient,
+        },
+        other => other,
+    };
+    match mode {
+        BackdropMode::DesktopBlur => ResolvedBackdrop::DesktopBlur,
+        BackdropMode::Dim => ResolvedBackdrop::Dim,
+        BackdropMode::Ambient => ResolvedBackdrop::Ambient,
+        BackdropMode::Auto => ResolvedBackdrop::Ambient,
+    }
+}
+
 /// How much of the viewer motion plays (SPEC-VIEWER §V4, §V11).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

@@ -13,13 +13,11 @@ mod slideshow;
 mod stage;
 mod timeline;
 mod viewer;
-mod viewer_window;
 mod window;
 
 pub use editor::{EDITOR_BAR_HEIGHT, EDITOR_PANEL_WIDTH, Tool};
 pub use hello::{HELLO_TEXT, HelloWindow, open_hello_window};
 pub use viewer::{FILMSTRIP_HEIGHT, VIEWER_BAR_HEIGHT};
-pub use viewer_window::ViewerWindow;
 pub use window::{LightboxWindow, Overlay, Route, thumb_size_for};
 
 use gpui_kit::{AnyWindowHandle, App, AppContext as _};
@@ -65,7 +63,10 @@ pub fn run(app: Lightbox, launch: Launch, instance: InstanceServer) {
                 }
             },
             Launch::View { paths, perf } => {
-                if let Err(error) = ViewerWindow::open(app, paths, perf, instance, cx) {
+                if perf {
+                    tracing::info!("viewer perf capture requested");
+                }
+                if let Err(error) = LightboxWindow::open_standalone(app, paths, instance, cx) {
                     tracing::error!(%error, "could not open the viewer window");
                     cx.quit();
                 }

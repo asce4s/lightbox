@@ -37,8 +37,12 @@ impl Render for LightboxWindow {
             .bg(theme.background)
             .text_color(theme.foreground)
             .text_sm();
-        let show_library = self.route() == Route::Library
-            || (self.route() == Route::Viewer && self.viewer_shows_library());
+        if self.standalone {
+            window.set_window_title(&self.standalone_title());
+        }
+        let show_library = !self.standalone
+            && (self.route() == Route::Library
+                || (self.route() == Route::Viewer && self.viewer_shows_library()));
         let root = match self.route() {
             Route::Slideshow => root.child(self.render_slideshow(cx)),
             Route::Editor => root.child(self.render_editor(window, cx)),
