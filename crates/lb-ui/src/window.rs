@@ -88,6 +88,7 @@ pub struct LightboxWindow {
     pub(crate) sidebar: SidebarVm,
     events: EventReceiver<AppEvent>,
     pub(crate) focus: FocusHandle,
+    pub(crate) viewer_focus: FocusHandle,
     pub(crate) scroll: VirtualListScrollHandle,
     pub(crate) panels: Entity<ResizableState>,
     pub(crate) search: Entity<InputState>,
@@ -139,6 +140,7 @@ impl LightboxWindow {
         });
         let panels = cx.new(|_| ResizableState::default());
         let focus = cx.focus_handle();
+        let viewer_focus = cx.focus_handle();
         let mut subscriptions = Vec::new();
         subscriptions.push(cx.subscribe(&search, |this: &mut Self, input, event, cx| {
             let text = input.read(cx).value().to_string();
@@ -165,6 +167,7 @@ impl LightboxWindow {
             vm,
             sidebar,
             focus,
+            viewer_focus,
             scroll: VirtualListScrollHandle::new(),
             panels,
             search,
@@ -388,7 +391,7 @@ impl LightboxWindow {
             }
             changed = true;
         }
-        if changed {
+        if changed || self.viewer_needs_frame() {
             cx.notify();
         }
     }

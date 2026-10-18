@@ -6,6 +6,7 @@ use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
 use crate::query::ViewSource;
 use crate::search::{FilterChips, MonthBucket, PhotoQueryResult, ViewQuery};
+use crate::viewer::RectF;
 use indexmap::IndexSet;
 use lb_core::{EditOp, GroupBy, Photo, PhotoId, Selection, SortOrder};
 use std::collections::HashMap;
@@ -74,6 +75,7 @@ pub struct LibraryVm {
     band_base: Option<Selection>,
     zoom: u32,
     viewport_width: f32,
+    viewport_height: f32,
     layout: GridLayout,
     pending_search: Option<(String, Duration)>,
     last_error: Option<String>,
@@ -100,6 +102,7 @@ impl LibraryVm {
             band_base: None,
             zoom: settings.grid.thumb_size.zoom_px(),
             viewport_width: 1200.0,
+            viewport_height: 800.0,
             layout: GridLayout::default(),
             pending_search: None,
             last_error: None,
@@ -310,6 +313,56 @@ impl LibraryVm {
     pub fn set_viewport_width(&mut self, width: f32) {
         self.viewport_width = width.max(1.0);
         self.relayout();
+    }
+
+    /// Tells the VM how tall the grid viewport is, for on-screen thumbnail rects.
+    pub fn set_viewport_height(&mut self, height: f32) {
+        self.viewport_height = height.max(1.0);
+    }
+
+    /// Height last given to [`Self::set_viewport_height`].
+    pub fn viewport_height(&self) -> f32 {
+        self.viewport_height
+    }
+
+    /// Window-space rectangle of the thumbnail *content* inside `photo`'s cell.
+    ///
+    /// `grid_origin` is the top-left of the cell area (the measured grid origin plus any
+    /// padding before the first cell). `scroll` is how far the content has moved up.
+    /// `None` when the cell is not in the current layout or does not intersect the viewport
+    /// (SPEC-VIEWER §V4.2).
+    pub fn thumbnail_rect(
+        &self,
+        photo: PhotoId,
+        grid_origin: (f32, f32),
+        scroll: f32,
+    ) -> Option<RectF> {
+        let (group, index) = self.position_of(photo)?;
+        let content = self.layout.cell_rect(group, index)?;
+        let cell = RectF {
+            x: grid_origin.0 + content.x,
+            y: grid_origin.1 + content.y - scroll,
+            w: content.w,
+            h: content.h,
+        };
+        let view = RectF {
+            x: grid_origin.0,
+            y: grid_origin.1,
+            w: self.viewport_width.max(1.0),
+            h: self.viewport_height.max(1.0),
+        };
+        if !rects_intersect(cell, view) {
+            return None;
+        }
+        let image = self
+            .lb
+            .photos()
+            .get(photo)
+            .ok()
+            .flatten()
+            .and_then(|p| Some((p.width? as f32, p.height? as f32)))
+            .unwrap_or((cell.w, cell.h));
+        Some(contain_rect(cell, image))
     }
 
     // ---- scroll anchor ----
@@ -726,5 +779,25 @@ impl LibraryVm {
         if !ids.is_empty() {
             self.run(|lb| lb.tags().add(ids, names));
         }
+    }
+}
+
+fn rects_intersect(a: RectF, b: RectF) -> bool {
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+/// Aspect-fit `image` inside `cell` (ObjectFit::Contain).
+fn contain_rect(cell: RectF, image: (f32, f32)) -> RectF {
+    if image.0 <= 0.0 || image.1 <= 0.0 || cell.w <= 0.0 || cell.h <= 0.0 {
+        return cell;
+    }
+    let scale = (cell.w / image.0).min(cell.h / image.1);
+    let w = image.0 * scale;
+    let h = image.1 * scale;
+    RectF {
+        x: cell.x + (cell.w - w) * 0.5,
+        y: cell.y + (cell.h - h) * 0.5,
+        w,
+        h,
     }
 }

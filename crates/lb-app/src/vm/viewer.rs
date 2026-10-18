@@ -278,6 +278,18 @@ impl ViewerVm {
         self.pan = (0.0, 0.0);
     }
 
+    /// `0` and the Fit button.
+    pub fn zoom_to_fit(&mut self) {
+        self.zoom = ZoomMode::Fit;
+        self.pan = (0.0, 0.0);
+    }
+
+    /// The 1:1 button.
+    pub fn zoom_to_actual(&mut self) {
+        self.zoom = ZoomMode::Actual;
+        self.pan = (0.0, 0.0);
+    }
+
     /// `I`.
     pub fn toggle_info(&mut self) {
         self.show_info = !self.show_info;
