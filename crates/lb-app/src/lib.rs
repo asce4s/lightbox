@@ -34,6 +34,7 @@ mod tags;
 mod thumbs;
 #[cfg(feature = "video")]
 mod video;
+pub mod viewer;
 pub mod vm;
 mod xmp;
 
@@ -87,4 +88,5 @@ pub use settings::{
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};
 pub use thumbs::{ThumbService, ThumbTicket};
+pub use viewer::ViewerService;
 pub use xmp::{XmpReport, XmpService};

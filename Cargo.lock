@@ -4129,6 +4129,7 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 name = "lb-app"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "chrono",
  "crossbeam-channel",
  "directories",
@@ -4147,8 +4148,10 @@ dependencies = [
  "lb-testkit",
  "lb-thumbs",
  "lb-video",
+ "notify",
  "opener",
  "parking_lot",
+ "proptest",
  "serde",
  "serde_json",
  "tempfile",

@@ -10,6 +10,7 @@ mod library;
 mod photo;
 mod ports;
 mod query;
+mod sort;
 
 pub use clock::{Clock, SystemClock};
 #[cfg(feature = "test-strategies")]
@@ -25,3 +26,4 @@ pub use library::{
 pub use photo::{Format, GeoPoint, MediaType, Photo, PhotoStatus, TakenAtSource};
 pub use ports::{Opener, TrashBackend};
 pub use query::{GroupBy, PHOTO_DATE_SQL, Selection, SortOrder, SqlValue};
+pub use sort::{natural_cmp, natural_cmp_os};

@@ -3,7 +3,9 @@
 //! libheif is linked only when `pkg-config` finds it at build time. Otherwise
 //! [`crate::heif_decoder_available`] is false and decoding returns [`MediaError::Unsupported`].
 
-use crate::{MediaError, Result, decode::present};
+#[cfg(lb_heif)]
+use crate::decode::present;
+use crate::{MediaError, Result};
 use std::path::Path;
 
 /// Decodes a HEIF still image.
@@ -168,6 +170,7 @@ mod linked {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(any(lb_heif, not(target_os = "linux")))]
     fn fixture() -> std::path::PathBuf {
         let path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tiny_8x8.heic");

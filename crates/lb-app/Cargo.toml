@@ -30,6 +30,7 @@ lb-faces = { path = "../lb-faces", optional = true }
 lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
+blake3 = { workspace = true }
 chrono = { workspace = true }
 opener = { workspace = true }
 trash = { workspace = true }
@@ -37,6 +38,7 @@ image = { workspace = true, features = ["jpeg", "png"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }
 indexmap = { workspace = true }
+notify = { workspace = true }
 parking_lot = { workspace = true }
 walkdir = { workspace = true }
 serde = { workspace = true }
@@ -46,4 +48,5 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 lb-testkit = { path = "../lb-testkit" }
+proptest = { workspace = true }
 tempfile = { workspace = true }
