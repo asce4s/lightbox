@@ -10,6 +10,17 @@ use crate::atomic::write_bytes_atomic;
 use crate::error::{AppError, Result};
 use crate::lightbox::Lightbox;
 
+/// A cached screen proxy for a file that is not in the catalog.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathProxy {
+    /// JPEG written under `{cache}/viewer/files`.
+    pub path: PathBuf,
+    /// Pixel width of [`Self::path`].
+    pub width: u32,
+    /// Pixel height of [`Self::path`].
+    pub height: u32,
+}
+
 /// Viewer work that is not the catalog edit stack.
 #[derive(Clone)]
 pub struct ViewerService {
@@ -39,6 +50,20 @@ impl ViewerService {
     #[must_use]
     pub fn exif_for_path(&self, path: &Path) -> ExifData {
         lb_media::read_exif(path)
+    }
+
+    /// Screen proxy for a non-catalog file, with the pixel size the viewer fits.
+    ///
+    /// Same cache as [`Self::proxy_for_path`].
+    pub fn proxy_file(&self, path: &Path, edge: u32) -> Result<PathProxy> {
+        let dest = self.proxy_for_path(path, edge)?;
+        let (width, height) = image::image_dimensions(&dest)
+            .map_err(|error| AppError::Invalid(format!("viewer proxy has no size: {error}")))?;
+        Ok(PathProxy {
+            path: dest,
+            width,
+            height,
+        })
     }
 
     /// Screen proxy for a non-catalog file: `{cache}/viewer/files/{quick_key}-{edge}.jpg`.

@@ -22,7 +22,7 @@ pub use playback::{
     composite_on_checker, decode_rgba, frame_index, has_alpha, image_for_clipboard, read_animation,
     save_checker_png, save_rgba_png,
 };
-pub use service::ViewerService;
+pub use service::{PathProxy, ViewerService};
 pub use tiles::{
     DecodedTile, HUGE_PIXELS, TILE_PX, TileRef, TileSource, decode_visible, needs_tiles,
     visible_tiles,

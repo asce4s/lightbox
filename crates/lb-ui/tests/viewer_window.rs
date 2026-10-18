@@ -85,6 +85,55 @@ fn ui_viewer_window_opens_path_outside_library(cx: &mut TestAppContext) {
 }
 
 #[gpui_kit::test]
+fn ui_viewer_window_shows_image_for_new_folder(cx: &mut TestAppContext) {
+    let lib = common::basic_library();
+    let (_dir, paths) = outside_jpegs(&["a.jpg", "b.jpg"]);
+    let server = InstanceServer::bind(&lib.app.paths().data).unwrap();
+    let (h, v) = open_standalone(cx, &lib.app, vec![paths[0].clone()], server);
+    cx.run_until_parked();
+    lib.clock.advance(Duration::from_millis(400));
+    let first = cx
+        .update_window(h, |_, window, cx| {
+            v.update(cx, |view, cx| view.pump(cx));
+            window.render_frame(cx);
+            assert!(
+                window.try_find(ids::VIEWER_LOADING).is_none(),
+                "a new folder must not stay on Loading"
+            );
+            let image = v.read(cx).viewer_image().expect("proxy for the open file");
+            assert!(image.exists(), "proxy file is on disk: {}", image.display());
+            let width = window.find(ids::VIEWER_IMAGE).bounds().size.width;
+            assert!(
+                width > px(40.0),
+                "the photo is fitted, not a 1 px placeholder: {width:?}"
+            );
+            image
+        })
+        .unwrap();
+    cx.update_window(h, |_, window, cx| {
+        v.update(cx, |view, cx| view.pump(cx));
+        window.render_frame(cx);
+        window.press("right", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    lib.clock.advance(Duration::from_millis(400));
+    cx.update_window(h, |_, window, cx| {
+        v.update(cx, |view, cx| view.pump(cx));
+        window.render_frame(cx);
+        assert!(window.try_find(ids::VIEWER_LOADING).is_none());
+        assert_eq!(window.find(ids::VIEWER_TITLE).label(), Some("b.jpg"));
+        let image = v.read(cx).viewer_image().expect("proxy for the next file");
+        assert_ne!(
+            image, first,
+            "the next file in the folder is a different picture"
+        );
+        assert!(image.exists());
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 fn ui_viewer_window_replaces_navset_on_second_launch(cx: &mut TestAppContext) {
     let lib = common::basic_library();
     let (_first, first) = outside_jpegs(&["a.jpg", "b.jpg"]);

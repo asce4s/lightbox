@@ -20,7 +20,7 @@ use lb_app::viewer::{
 };
 use lb_app::vm::{Modifiers, ViewerVm, ZoomMode};
 use lb_core::{EditStack, Photo, PhotoId};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Height of the viewer's top bar. Matches [`lb_app::viewer::TOP_BAR_HEIGHT`].
@@ -36,6 +36,17 @@ const PROXY_EDGE: u32 = 2560;
 const ZOOM_EDGE: u32 = 8192;
 const CHROME_TEXT: f32 = 0.949;
 const CHROME_MUTED: f32 = 0.69;
+/// Shown when a file outside the library cannot be decoded.
+const UNREADABLE_IMAGE: &str = "Could not read this image";
+
+/// Screen proxy requested for one non-catalog file.
+struct PathProxyRequest {
+    source: PathBuf,
+    edge: u32,
+    file: Option<lb_app::viewer::PathProxy>,
+    pending: bool,
+    failed: bool,
+}
 
 /// Inputs for the floating toolbar. Kept together so the render method stays under clippy's
 /// argument limit.
@@ -73,6 +84,7 @@ pub(crate) struct ViewerState {
     frame_files: Vec<PathBuf>,
     checker: Option<PathBuf>,
     checker_tried: bool,
+    path_proxy: Option<PathProxyRequest>,
 }
 
 impl LightboxWindow {
@@ -105,6 +117,9 @@ impl LightboxWindow {
     pub fn viewer_image(&self) -> Option<PathBuf> {
         let v = self.viewer.as_ref()?;
         let id = v.vm.current();
+        if v.vm.current_photo().is_none() {
+            return self.current_path_proxy().map(|file| file.path.clone());
+        }
         shown_for(v, id).map(|f| f.path.clone()).or_else(|| {
             self.thumbs
                 .get(&(id, ThumbSize::L))
@@ -206,6 +221,7 @@ impl LightboxWindow {
             frame_files: Vec::new(),
             checker: None,
             checker_tried: false,
+            path_proxy: None,
         });
         self.opened = Some(id);
         self.viewer_reload(cx);
@@ -241,6 +257,7 @@ impl LightboxWindow {
             frame_files: Vec::new(),
             checker: None,
             checker_tried: false,
+            path_proxy: None,
         });
         self.opened = Some(opened_id);
         self.viewer_reload(cx);
@@ -287,11 +304,16 @@ impl LightboxWindow {
     /// Starts the proxy render the viewer needs, unless it is shown or already running.
     pub(crate) fn sync_viewer(&mut self, cx: &mut Context<Self>) {
         let edge = self.viewer_edge();
-        let Some(v) = &mut self.viewer else { return };
-        let id = v.vm.current();
-        if id.get() == 0 {
+        let non_catalog = self
+            .viewer
+            .as_ref()
+            .is_some_and(|v| v.vm.current_photo().is_none());
+        if non_catalog {
+            self.sync_path_proxy(edge, cx);
             return;
         }
+        let Some(v) = &mut self.viewer else { return };
+        let id = v.vm.current();
         let key = frame_key(id, &v.stack, edge);
         let stack = v.stack.clone();
         if let Some(cancel) = v.stage.want(&key) {
@@ -307,6 +329,131 @@ impl LightboxWindow {
         }
         self.thumb_for_size(id, ThumbSize::L);
         self.thumb_for_size(id, ThumbSize::S);
+    }
+
+    /// The proxy for the file on screen, when that file is not a catalog photo.
+    fn current_path_proxy(&self) -> Option<&lb_app::viewer::PathProxy> {
+        let edge = self.viewer_edge();
+        let v = self.viewer.as_ref()?;
+        let slot = v.path_proxy.as_ref()?;
+        if slot.source != v.vm.current_entry().path || slot.edge != edge {
+            return None;
+        }
+        slot.file.as_ref()
+    }
+
+    /// Decodes a non-catalog file into `{cache}/viewer/files` (SPEC-VIEWER §V7.1 L2).
+    fn sync_path_proxy(&mut self, edge: u32, cx: &mut Context<Self>) {
+        let Some((source, same, failed)) = self.viewer.as_ref().map(|v| {
+            let source = v.vm.current_entry().path.clone();
+            let slot = v
+                .path_proxy
+                .as_ref()
+                .filter(|slot| slot.source == source && slot.edge == edge);
+            let same = v.error.is_some()
+                || slot.is_some_and(|slot| slot.file.is_some() || slot.pending || slot.failed);
+            let failed = slot.is_some_and(|slot| slot.failed);
+            (source, same, failed)
+        }) else {
+            return;
+        };
+        if same {
+            if failed && let Some(v) = &mut self.viewer {
+                v.error = Some(UNREADABLE_IMAGE);
+            }
+            return;
+        }
+        if let Some(v) = &mut self.viewer {
+            v.path_proxy = Some(PathProxyRequest {
+                source: source.clone(),
+                edge,
+                file: None,
+                pending: true,
+                failed: false,
+            });
+        }
+        let app = self.app.clone();
+        let decode_path = source.clone();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { app.viewer().proxy_file(&decode_path, edge) })
+                .await;
+            this.update(cx, |this, cx| {
+                this.finish_path_proxy(&source, edge, result, cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn finish_path_proxy(
+        &mut self,
+        source: &Path,
+        edge: u32,
+        result: lb_app::Result<lb_app::viewer::PathProxy>,
+        cx: &mut Context<Self>,
+    ) {
+        let mut failed = false;
+        {
+            let Some(v) = &mut self.viewer else { return };
+            let Some(slot) = v.path_proxy.as_mut() else {
+                return;
+            };
+            if slot.source != source || slot.edge != edge {
+                return;
+            }
+            slot.pending = false;
+            match result {
+                Ok(file) => {
+                    slot.file = Some(file);
+                    slot.failed = false;
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "viewer proxy failed");
+                    slot.file = None;
+                    slot.failed = true;
+                    failed = true;
+                }
+            }
+        }
+        if failed && let Some(v) = &mut self.viewer {
+            v.error = Some(UNREADABLE_IMAGE);
+        }
+        self.adopt_path_fit();
+        cx.notify();
+    }
+
+    /// The open animation starts before the file is decoded, so its fit rect is 1×1.
+    /// Once the proxy size is known, place the photo at that size.
+    fn adopt_path_fit(&mut self) {
+        if self
+            .viewer
+            .as_ref()
+            .is_some_and(|v| v.closing || v.vm.zoom() != ZoomMode::Fit)
+        {
+            return;
+        }
+        if self.current_path_proxy().is_none() {
+            return;
+        }
+        let now = self.now();
+        let fit = self.current_fit();
+        let Some(v) = &self.viewer else { return };
+        let presented = v.vm.presented(now);
+        let sized = presented.image.is_some_and(|layer| {
+            (layer.rect.w - fit.w).abs() < 1.0 && (layer.rect.h - fit.h).abs() < 1.0
+        });
+        if sized {
+            return;
+        }
+        let opacity = presented.image.map(|layer| layer.opacity).unwrap_or(0.0);
+        let Some(v) = &mut self.viewer else { return };
+        if opacity < 0.5 {
+            v.vm.begin_open(now, None, fit);
+        } else {
+            v.vm.motion_mut().settle_open(fit);
+        }
     }
 
     fn current_fit(&self) -> RectF {
@@ -326,6 +473,12 @@ impl LightboxWindow {
         let Some(v) = &self.viewer else {
             return (1.0, 1.0);
         };
+        if v.vm.current_photo().is_none() {
+            return self
+                .current_path_proxy()
+                .map(|file| (file.width as f32, file.height as f32))
+                .unwrap_or((1.0, 1.0));
+        }
         let shown = shown_for(v, v.vm.current());
         if v.stack.is_empty()
             && let Some(p) = &v.photo
