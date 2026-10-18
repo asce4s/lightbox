@@ -30,14 +30,34 @@ the People face grid with naming and merging, and the Picasa import preview.
 
 ## Install
 
+### Download a build
+
 Download the archive for your system from the
-[releases page](https://github.com/asce4s/lightbox/releases) and unpack it.
+[releases page](https://github.com/asce4s/lightbox/releases). Each release also has a
+`SHA256SUMS` file.
 
 | System | Artifact | Run |
 |---|---|---|
 | Linux x86_64 | `lightbox-<version>-linux-x86_64.AppImage` or `.tar.gz` | `chmod +x` the AppImage, or run `./lightbox` from the archive |
 | macOS 13+ | `lightbox-<version>-macos-<arch>.dmg` or `-app.tar.gz` | drag `Lightbox.app` to Applications |
 | Windows 10/11 x64 | `lightbox-<version>-windows-x86_64.zip` | run `lightbox.exe` |
+
+The AppImage bundles the libraries the binary links, except glibc, libstdc++, libgcc and the
+Vulkan loader. It still needs a Vulkan driver and the usual font, Wayland and X11 libraries
+(`fontconfig`, `freetype`, `libxkbcommon`, `wayland`, `libxcb`, `libX11`).
+
+### Arch Linux
+
+```sh
+yay -S lightbox-bin
+# or
+paru -S lightbox-bin
+```
+
+`lightbox-bin` installs the Linux `.tar.gz` from the GitHub release into `/usr/bin` (the AppImage
+stays a direct download). `ffmpeg` is optional and enables video thumbnails. Publishing that
+package needs an [AUR](https://aur.archlinux.org/) account whose SSH private key is stored as the
+`AUR_SSH_PRIVATE_KEY` repository secret (no passphrase). A `v*` tag then updates `lightbox-bin`.
 
 Builds are unsigned. On macOS, right-click the app and choose Open the first time (or run
 `xattr -dr com.apple.quarantine Lightbox.app`). To sign and notarize your own build, sign

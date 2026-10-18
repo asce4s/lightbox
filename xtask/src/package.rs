@@ -1,11 +1,14 @@
 //! `cargo xtask package`: release archives per operating system (SPEC §13).
 //!
-//! Linux gets a `.tar.gz` and an AppDir (turned into an AppImage when `appimagetool` is on
-//! `PATH`), macOS an unsigned `.app` bundle in a `.tar.gz` (plus a `.dmg` when `hdiutil` exists),
-//! Windows a `.zip`.
+//! Linux gets a `.tar.gz` and an AppDir. Shared libraries reported by `ldd` are copied into
+//! the AppDir, except glibc, libstdc++, libgcc and the Vulkan loader, which stay on the host.
+//! `appimagetool` turns that directory into an AppImage when it is on `PATH`. Set
+//! `LIGHTBOX_REQUIRE_APPIMAGE=1` to fail when the AppImage is not produced. macOS gets an
+//! unsigned `.app` bundle in a `.tar.gz` (plus a `.dmg` when `hdiutil` exists), Windows a `.zip`.
 
 use crate::icon;
 use anyhow::{Context, Result, bail};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -62,6 +65,94 @@ impl Target {
         };
         format!("{}.{ext}", self.stem())
     }
+
+    /// File name of the Linux AppImage for this target.
+    pub fn appimage_name(&self) -> String {
+        format!("{}.AppImage", self.stem())
+    }
+}
+
+/// `AppRun` for the AppDir. Bundled libraries are found via `usr/lib`.
+pub fn app_run_script() -> &'static str {
+    "#!/bin/sh\n\
+HERE=\"$(dirname \"$(readlink -f \"$0\")\")\"\n\
+export LD_LIBRARY_PATH=\"$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\n\
+exec \"$HERE/usr/bin/lightbox\" \"$@\"\n"
+}
+
+/// One library `ldd` reported.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NeededLib {
+    /// Soname the loader searches for, such as `libfontconfig.so.1`.
+    pub soname: String,
+    /// Absolute path of the resolved file. `None` for `not found` and for the vDSO.
+    pub path: Option<PathBuf>,
+}
+
+/// Parses `ldd` stdout into sonames and resolved paths.
+pub fn parse_ldd(output: &str) -> Vec<NeededLib> {
+    let mut libs = Vec::new();
+    for raw in output.lines() {
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some((left, right)) = line.split_once("=>") {
+            let soname = left.trim();
+            if soname.is_empty() {
+                continue;
+            }
+            let path = right
+                .split_whitespace()
+                .next()
+                .filter(|token| token.starts_with('/'))
+                .map(PathBuf::from);
+            libs.push(NeededLib {
+                soname: soname.to_owned(),
+                path,
+            });
+            continue;
+        }
+        if let Some(token) = line.split_whitespace().next()
+            && token.starts_with('/')
+            && let Some(name) = Path::new(token).file_name().and_then(|name| name.to_str())
+        {
+            libs.push(NeededLib {
+                soname: name.to_owned(),
+                path: Some(PathBuf::from(token)),
+            });
+        }
+    }
+    libs
+}
+
+/// Whether `soname` must come from the host.
+///
+/// glibc (the loader, libc and NSS modules), libstdc++, libgcc and `libvulkan.so.1` stay on
+/// the host. The GPU driver is loaded through the Vulkan loader and has to match the machine.
+pub fn is_host_lib(soname: &str) -> bool {
+    let name = Path::new(soname)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(soname);
+    const PREFIXES: &[&str] = &[
+        "libc.so",
+        "libm.so",
+        "libdl.so",
+        "librt.so",
+        "libpthread.so",
+        "libresolv.so",
+        "libutil.so",
+        "libnss_",
+        "libnsl.so",
+        "libstdc++.so",
+        "libgcc_s.so",
+        "libvulkan.so",
+        "ld-linux",
+        "ld-musl",
+        "linux-vdso",
+    ];
+    PREFIXES.iter().any(|prefix| name.starts_with(prefix))
 }
 
 /// `Contents/Info.plist` of the macOS bundle, including document types for the
@@ -144,10 +235,7 @@ pub fn stage_appdir(bin_dir: &Path, out: &Path) -> Result<PathBuf> {
     fs::write(dir.join("lightbox.desktop"), desktop_entry())?;
     write_icon(&dir.join("lightbox.png"), 512)?;
     let apprun = dir.join("AppRun");
-    fs::write(
-        &apprun,
-        "#!/bin/sh\nHERE=\"$(dirname \"$(readlink -f \"$0\")\")\"\nexec \"$HERE/usr/bin/lightbox\" \"$@\"\n",
-    )?;
+    fs::write(&apprun, app_run_script())?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -182,6 +270,49 @@ pub fn make_archive(out: &Path, dir_name: &str, archive: &str) -> Result<PathBuf
 fn on_path(tool: &str) -> bool {
     std::env::var_os("PATH")
         .is_some_and(|paths| std::env::split_paths(&paths).any(|dir| dir.join(tool).is_file()))
+}
+
+/// `LIGHTBOX_REQUIRE_APPIMAGE=1` makes a missing AppImage a hard failure (the release workflow).
+fn appimage_required() -> bool {
+    std::env::var("LIGHTBOX_REQUIRE_APPIMAGE").is_ok_and(|value| value == "1")
+}
+
+/// Copies non-host shared libraries of the two binaries into `appdir/usr/lib`.
+fn bundle_shared_libs(appdir: &Path, bin_dir: &Path) -> Result<()> {
+    let lib_dir = appdir.join("usr/lib");
+    fs::create_dir_all(&lib_dir)?;
+    let mut copied = HashSet::new();
+    for name in BINARIES {
+        let bin = bin_dir.join(name);
+        let output = Command::new("ldd")
+            .arg(&bin)
+            .output()
+            .with_context(|| format!("running ldd on {}", bin.display()))?;
+        if !output.status.success() {
+            let err = String::from_utf8_lossy(&output.stderr);
+            bail!("ldd failed for {} ({err})", bin.display());
+        }
+        let text = String::from_utf8(output.stdout).context("ldd output is not utf-8")?;
+        for lib in parse_ldd(&text) {
+            if is_host_lib(&lib.soname) {
+                continue;
+            }
+            let Some(path) = &lib.path else {
+                bail!(
+                    "{} needs {} but ldd did not find it",
+                    bin.display(),
+                    lib.soname
+                );
+            };
+            if !copied.insert(lib.soname.clone()) {
+                continue;
+            }
+            let dest = lib_dir.join(&lib.soname);
+            fs::copy(path, &dest)
+                .with_context(|| format!("copying {} to {}", path.display(), dest.display()))?;
+        }
+    }
+    Ok(())
 }
 
 fn run_cargo_build(repo: &Path) -> Result<PathBuf> {
@@ -227,8 +358,13 @@ pub fn run() -> Result<()> {
     match target.os.as_str() {
         "linux" => {
             let appdir = stage_appdir(&bin_dir, &out)?;
+            match bundle_shared_libs(&appdir, &bin_dir) {
+                Ok(()) => {}
+                Err(err) if appimage_required() => return Err(err),
+                Err(err) => eprintln!("not bundling shared libraries: {err}"),
+            }
             if on_path("appimagetool") {
-                let image = out.join(format!("{}.AppImage", target.stem()));
+                let image = out.join(target.appimage_name());
                 let status = Command::new("appimagetool")
                     .env("ARCH", &target.arch)
                     .arg(&appdir)
@@ -236,9 +372,13 @@ pub fn run() -> Result<()> {
                     .status()?;
                 if status.success() {
                     artifacts.push(image);
+                } else if appimage_required() {
+                    bail!("appimagetool failed ({status})");
                 } else {
                     eprintln!("appimagetool failed ({status}); AppImage skipped");
                 }
+            } else if appimage_required() {
+                bail!("appimagetool not found");
             } else {
                 println!(
                     "appimagetool not found; AppDir left in {}",
@@ -394,11 +534,61 @@ mod tests {
         ] {
             assert!(dir.join(rel).is_file(), "{rel} missing");
         }
-        assert!(
-            fs::read_to_string(dir.join("AppRun"))
-                .unwrap()
-                .contains("usr/bin/lightbox")
+        let apprun = fs::read_to_string(dir.join("AppRun")).unwrap();
+        assert!(apprun.contains("usr/bin/lightbox"));
+        assert!(apprun.contains("LD_LIBRARY_PATH"));
+    }
+
+    #[test]
+    fn apprun_sets_library_path() {
+        let script = app_run_script();
+        assert!(script.contains("LD_LIBRARY_PATH=\"$HERE/usr/lib"));
+        assert!(script.contains("exec \"$HERE/usr/bin/lightbox\""));
+    }
+
+    #[test]
+    fn appimage_name_follows_the_stem() {
+        assert_eq!(
+            target("linux").appimage_name(),
+            "lightbox-1.2.3-linux-aarch64.AppImage"
         );
+    }
+
+    #[test]
+    fn host_lib_filter_keeps_glibc_and_vulkan() {
+        assert!(is_host_lib("libc.so.6"));
+        assert!(is_host_lib("libm.so.6"));
+        assert!(is_host_lib("libstdc++.so.6"));
+        assert!(is_host_lib("libgcc_s.so.1"));
+        assert!(is_host_lib("libvulkan.so.1"));
+        assert!(is_host_lib("/lib64/ld-linux-x86-64.so.2"));
+        assert!(is_host_lib("libnss_files.so.2"));
+        assert!(!is_host_lib("libfontconfig.so.1"));
+        assert!(!is_host_lib("libxkbcommon.so.0"));
+        assert!(!is_host_lib("libcrypt.so.1"));
+
+        let listing = "\tlinux-vdso.so.1 (0x0)\n\
+            \tlibfontconfig.so.1 => /usr/lib/libfontconfig.so.1 (0x1)\n\
+            \tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x2)\n\
+            \tlibmissing.so.0 => not found\n\
+            \t/lib64/ld-linux-x86-64.so.2 (0x3)\n";
+        let libs = parse_ldd(listing);
+        assert_eq!(
+            libs.iter()
+                .filter(|lib| !is_host_lib(&lib.soname))
+                .map(|lib| lib.soname.as_str())
+                .collect::<Vec<_>>(),
+            vec!["libfontconfig.so.1", "libmissing.so.0"]
+        );
+        assert!(
+            libs.iter()
+                .any(|lib| lib.soname == "libmissing.so.0" && lib.path.is_none())
+        );
+        assert!(
+            libs.iter()
+                .any(|lib| { lib.soname == "ld-linux-x86-64.so.2" && lib.path.is_some() })
+        );
+        assert!(!libs.iter().any(|lib| lib.soname.contains("vdso")));
     }
 
     #[test]
