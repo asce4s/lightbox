@@ -5,6 +5,7 @@ mod entry;
 mod loader;
 mod motion;
 mod perf;
+mod playback;
 mod service;
 mod transform;
 
@@ -15,6 +16,11 @@ pub use entry::{
 };
 pub use loader::{LoadLevel, MEMORY_BUDGET, MediaBytes, ViewerLoader};
 pub use perf::{ViewerPerf, capture_viewer_perf};
+pub use playback::{
+    CHECKER_DARK, CHECKER_LIGHT, CHECKER_PX, Clip, ClipboardBody, checker_rgb, clipboard_for_path,
+    composite_on_checker, decode_rgba, frame_index, has_alpha, image_for_clipboard, read_animation,
+    save_checker_png, save_rgba_png,
+};
 pub use service::ViewerService;
 
 pub use motion::{

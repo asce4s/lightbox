@@ -37,7 +37,7 @@ percent-encoding = { workspace = true }
 chrono = { workspace = true }
 opener = { workspace = true }
 trash = { workspace = true }
-image = { workspace = true, features = ["jpeg", "png"] }
+image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }
 indexmap = { workspace = true }

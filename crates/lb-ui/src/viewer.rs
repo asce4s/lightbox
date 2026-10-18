@@ -8,13 +8,15 @@ use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, Context, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    ObjectFit, Pixels, Point, ScrollWheelEvent, TestSupportExt as _, Window, div, hsla, img, point,
-    px,
+    AnyElement, ClipboardItem, Context, Image, ImageFormat, IntoElement, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels, Point, ScrollWheelEvent,
+    TestSupportExt as _, Window, div, hsla, img, point, px,
 };
 use lb_app::ThumbSize;
 use lb_app::viewer::{
-    DRAG_THRESHOLD_PX, RectF, entry_error, fit_area, fit_rect, fit_scale, stage_insets,
+    Clip, ClipboardBody, DRAG_THRESHOLD_PX, RectF, clipboard_for_path, decode_rgba, entry_error,
+    fit_area, fit_rect, fit_scale, has_alpha, image_for_clipboard, read_animation,
+    save_checker_png, save_rgba_png, stage_insets,
 };
 use lb_app::vm::{Modifiers, ViewerVm, ZoomMode};
 use lb_core::{EditStack, Photo, PhotoId};
@@ -66,6 +68,11 @@ pub(crate) struct ViewerState {
     pub(crate) error: Option<&'static str>,
     outgoing: Option<PathBuf>,
     press: Option<PointerPress>,
+    playback: Option<Clip>,
+    playback_tried: bool,
+    frame_files: Vec<PathBuf>,
+    checker: Option<PathBuf>,
+    checker_tried: bool,
 }
 
 impl LightboxWindow {
@@ -144,7 +151,9 @@ impl LightboxWindow {
             return false;
         };
         let now = self.now();
-        v.closing || v.vm.is_animating(now)
+        v.closing
+            || v.vm.is_animating(now)
+            || v.playback.as_ref().is_some_and(|clip| !clip.is_paused())
     }
 
     /// Drops the viewer once the close transition has finished.
@@ -192,6 +201,11 @@ impl LightboxWindow {
             error,
             outgoing: None,
             press: None,
+            playback: None,
+            playback_tried: false,
+            frame_files: Vec::new(),
+            checker: None,
+            checker_tried: false,
         });
         self.opened = Some(id);
         self.viewer_reload(cx);
@@ -222,6 +236,11 @@ impl LightboxWindow {
             error,
             outgoing: None,
             press: None,
+            playback: None,
+            playback_tried: false,
+            frame_files: Vec::new(),
+            checker: None,
+            checker_tried: false,
         });
         self.opened = Some(opened_id);
         self.viewer_reload(cx);
@@ -351,6 +370,11 @@ impl LightboxWindow {
         let fit = self.current_fit();
         if let Some(v) = &mut self.viewer {
             v.outgoing = outgoing;
+            v.playback = None;
+            v.playback_tried = false;
+            v.frame_files.clear();
+            v.checker = None;
+            v.checker_tried = false;
             v.vm.set_stage(self.viewport);
             v.vm.motion_mut().navigate(now, dir, fit);
         }
@@ -362,7 +386,7 @@ impl LightboxWindow {
         if self.viewer.as_ref().is_some_and(|v| v.closing) {
             return;
         }
-        let outgoing = self.viewer_image();
+        let outgoing = self.displayed_image();
         let now = self.now();
         let can = self.viewer.as_ref().is_some_and(|v| v.vm.has_next());
         if !can {
@@ -381,7 +405,7 @@ impl LightboxWindow {
         if self.viewer.as_ref().is_some_and(|v| v.closing) {
             return;
         }
-        let outgoing = self.viewer_image();
+        let outgoing = self.displayed_image();
         let now = self.now();
         let can = self.viewer.as_ref().is_some_and(|v| v.vm.has_prev());
         if !can {
@@ -402,7 +426,7 @@ impl LightboxWindow {
             self.viewer_prev(cx);
             return;
         }
-        let outgoing = self.viewer_image();
+        let outgoing = self.displayed_image();
         let moved = self.viewer.as_mut().is_some_and(|v| v.vm.home());
         self.viewer_after_move(moved, -1, outgoing, cx);
     }
@@ -418,7 +442,7 @@ impl LightboxWindow {
             self.viewer_next(cx);
             return;
         }
-        let outgoing = self.viewer_image();
+        let outgoing = self.displayed_image();
         let moved = self.viewer.as_mut().is_some_and(|v| v.vm.end());
         self.viewer_after_move(moved, 1, outgoing, cx);
     }
@@ -436,7 +460,7 @@ impl LightboxWindow {
         if from == to {
             return;
         }
-        let outgoing = self.viewer_image();
+        let outgoing = self.displayed_image();
         let dir = if to > from { 1 } else { -1 };
         let moved = self.viewer.as_mut().is_some_and(|v| v.vm.goto(id));
         self.viewer_after_move(moved, dir, outgoing, cx);
@@ -685,8 +709,211 @@ impl LightboxWindow {
             }
             "enter" | "f5" => self.viewer_play(window, cx),
             "delete" | "backspace" => self.viewer_delete(cx),
+            "p" if !cmd => self.viewer_toggle_playback(cx),
+            "c" if cmd => self.copy_viewer_image(cx),
             _ => {}
         }
+    }
+
+    /// `P` pauses or resumes a GIF or WebP. Still images are unchanged.
+    fn viewer_toggle_playback(&mut self, cx: &mut Context<Self>) {
+        self.ensure_playback();
+        let now = self.now();
+        if let Some(clip) = self.viewer.as_mut().and_then(|v| v.playback.as_mut()) {
+            clip.toggle(now);
+        }
+        cx.notify();
+    }
+
+    /// Ctrl/Cmd+C copies the current image (the playing frame, when there is one).
+    fn copy_viewer_image(&mut self, cx: &mut Context<Self>) {
+        let now = self.now();
+        let frame = self
+            .viewer
+            .as_ref()
+            .and_then(|v| v.playback.as_ref())
+            .and_then(|clip| clip.frame(now).cloned());
+        let Some(path) = self
+            .viewer
+            .as_ref()
+            .map(|v| v.vm.current_entry().path.clone())
+        else {
+            return;
+        };
+        let body = if let Some(image) = &frame {
+            image_for_clipboard(image, &path, true)
+        } else {
+            clipboard_for_path(&path)
+        };
+        match body {
+            Ok(ClipboardBody::Png(bytes)) => {
+                cx.write_to_clipboard(ClipboardItem::new_image(&Image {
+                    format: ImageFormat::Png,
+                    bytes,
+                    id: 1,
+                }));
+            }
+            Ok(ClipboardBody::Path(file)) => {
+                cx.write_to_clipboard(ClipboardItem::new_string(file.display().to_string()));
+            }
+            Err(error) => {
+                tracing::warn!(%error, "could not copy the viewer image");
+            }
+        }
+    }
+
+    /// Loads animation frames and a checkerboard composite the first time they are needed.
+    fn prepare_viewer_pixels(&mut self) {
+        self.ensure_playback();
+        self.ensure_frame_file();
+        self.ensure_checker();
+    }
+
+    fn ensure_playback(&mut self) {
+        let Some(v) = &self.viewer else {
+            return;
+        };
+        if v.playback_tried || v.playback.is_some() {
+            return;
+        }
+        let path = v.vm.current_entry().path.clone();
+        if !is_gif_or_webp(&path) {
+            if let Some(v) = &mut self.viewer {
+                v.playback_tried = true;
+            }
+            return;
+        }
+        let now = self.now();
+        match read_animation(&path) {
+            Ok(Some(mut clip)) => {
+                clip.restart(now);
+                if let Some(v) = &mut self.viewer {
+                    v.playback = Some(clip);
+                    v.playback_tried = true;
+                    v.frame_files.clear();
+                }
+            }
+            Ok(None) => {
+                if let Some(v) = &mut self.viewer {
+                    v.playback_tried = true;
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "could not read an animation");
+                if let Some(v) = &mut self.viewer {
+                    v.playback_tried = true;
+                }
+            }
+        }
+    }
+
+    fn ensure_frame_file(&mut self) {
+        let now = self.now();
+        let prepared = {
+            let Some(v) = &self.viewer else {
+                return;
+            };
+            let Some(clip) = &v.playback else {
+                return;
+            };
+            let index = clip.index(now);
+            if v.frame_files
+                .get(index)
+                .is_some_and(|path| !path.as_os_str().is_empty())
+            {
+                return;
+            }
+            clip.frame(now).cloned().map(|image| (index, image))
+        };
+        let Some((index, image)) = prepared else {
+            return;
+        };
+        let path = self
+            .app
+            .paths()
+            .cache
+            .join("viewer")
+            .join("frames")
+            .join(format!("{index}.png"));
+        let saved = if has_alpha(&image) {
+            save_checker_png(&path, &image)
+        } else {
+            save_rgba_png(&path, &image)
+        };
+        if let Err(error) = saved {
+            tracing::warn!(%error, "could not cache an animation frame");
+            return;
+        }
+        if let Some(v) = &mut self.viewer {
+            if v.frame_files.len() <= index {
+                v.frame_files.resize_with(index + 1, PathBuf::new);
+            }
+            v.frame_files[index] = path;
+        }
+    }
+
+    fn ensure_checker(&mut self) {
+        let Some(v) = &self.viewer else {
+            return;
+        };
+        if v.checker_tried || v.playback.is_some() {
+            return;
+        }
+        let path = v.vm.current_entry().path.clone();
+        let ext = extension_lower(&path);
+        if ext != "png" && ext != "webp" {
+            if let Some(v) = &mut self.viewer {
+                v.checker_tried = true;
+            }
+            return;
+        }
+        let decoded = decode_rgba(&path);
+        let Ok(image) = decoded else {
+            if let Some(v) = &mut self.viewer {
+                v.checker_tried = true;
+            }
+            return;
+        };
+        if !has_alpha(&image) {
+            if let Some(v) = &mut self.viewer {
+                v.checker_tried = true;
+            }
+            return;
+        }
+        let out = self
+            .app
+            .paths()
+            .cache
+            .join("viewer")
+            .join(format!("checker-{}.png", v.vm.index()));
+        if let Err(error) = save_checker_png(&out, &image) {
+            tracing::warn!(%error, "could not composite the checkerboard");
+            if let Some(v) = &mut self.viewer {
+                v.checker_tried = true;
+            }
+            return;
+        }
+        if let Some(v) = &mut self.viewer {
+            v.checker = Some(out);
+            v.checker_tried = true;
+        }
+    }
+
+    /// The file drawn for the current entry: a cached frame, a checkerboard composite, or the proxy.
+    fn displayed_image(&self) -> Option<PathBuf> {
+        let v = self.viewer.as_ref()?;
+        if let Some(clip) = &v.playback {
+            let index = clip.index(self.now());
+            if let Some(path) = v.frame_files.get(index)
+                && !path.as_os_str().is_empty()
+            {
+                return Some(path.clone());
+            }
+        }
+        if let Some(path) = &v.checker {
+            return Some(path.clone());
+        }
+        self.viewer_image()
     }
 
     fn viewer_play(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -805,6 +1032,10 @@ impl LightboxWindow {
     // ---- rendering ----
 
     pub(crate) fn render_viewer(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        if self.viewer.is_none() {
+            return div().into_any_element();
+        }
+        self.prepare_viewer_pixels();
         let now = self.now();
         let Some(v) = &self.viewer else {
             return div().into_any_element();
@@ -839,7 +1070,7 @@ impl LightboxWindow {
         let path = if error.is_some() {
             None
         } else {
-            self.viewer_image()
+            self.displayed_image()
         };
         let outgoing = self.viewer.as_ref().and_then(|v| v.outgoing.clone());
         let (stage_w, stage_h) = self.viewport;
@@ -1319,6 +1550,17 @@ impl LightboxWindow {
             .children(lines.into_iter().map(|l| div().child(l)))
             .into_any_element()
     }
+}
+
+fn extension_lower(path: &std::path::Path) -> String {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+}
+
+fn is_gif_or_webp(path: &std::path::Path) -> bool {
+    matches!(extension_lower(path).as_str(), "gif" | "webp")
 }
 
 fn placed_image(path: Option<PathBuf>, layer: lb_app::viewer::LayerState) -> gpui_kit::Div {
