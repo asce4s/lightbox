@@ -4,6 +4,7 @@ mod ambient;
 mod entry;
 mod loader;
 mod motion;
+mod perf;
 mod service;
 mod transform;
 
@@ -13,6 +14,7 @@ pub use entry::{
     entry_from_id, list_folder,
 };
 pub use loader::{LoadLevel, MEMORY_BUDGET, MediaBytes, ViewerLoader};
+pub use perf::{ViewerPerf, capture_viewer_perf};
 pub use service::ViewerService;
 
 pub use motion::{

@@ -17,7 +17,7 @@ lb-assoc = { path = "../crates/lb-assoc" }
 lb-faces = { path = "../crates/lb-faces" }
 directories = { workspace = true }
 ureq = { workspace = true }
-image = { workspace = true, features = ["png"] }
+image = { workspace = true, features = ["png", "jpeg"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

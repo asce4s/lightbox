@@ -103,5 +103,5 @@ pub use settings::{
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};
 pub use thumbs::{ThumbService, ThumbTicket};
-pub use viewer::ViewerService;
+pub use viewer::{ViewerPerf, ViewerService, capture_viewer_perf};
 pub use xmp::{XmpReport, XmpService};
