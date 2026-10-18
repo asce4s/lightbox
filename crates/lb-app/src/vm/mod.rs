@@ -28,4 +28,4 @@ pub use sidebar::{SidebarItem, SidebarKey, SidebarSection, SidebarVm};
 pub use slideshow::{
     CONTROLS_IDLE, DURATION_RANGE, PRELOAD_AHEAD, SlideshowOptions, SlideshowState,
 };
-pub use viewer::{ViewerVm, ZOOM_LIMITS, ZoomMode};
+pub use viewer::{UNSAVED_ROTATION_HINT, ViewerVm, ZOOM_LIMITS, ZoomMode};

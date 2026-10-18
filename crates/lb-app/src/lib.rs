@@ -81,9 +81,10 @@ pub use search::{
     FilterChips, Group, GroupKey, MonthBucket, PhotoQueryResult, SearchService, ViewQuery,
 };
 pub use settings::{
-    ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings, SETTINGS_KEYS,
-    Settings, SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings,
-    Transition, VideoSettings, XmpSettings,
+    BackdropMode, ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings,
+    MotionLevel, SETTINGS_KEYS, SavedDefaults, Settings, SettingsService, SlideshowSettings,
+    ThemeChoice, ThumbChoice, ThumbSettings, Transition, VideoSettings, ViewerSettings,
+    WheelAction, XmpSettings,
 };
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};

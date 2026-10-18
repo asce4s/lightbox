@@ -396,3 +396,32 @@ fn ui_viewer_error_card_for_missing_file(cx: &mut TestAppContext) {
     })
     .unwrap();
 }
+
+#[gpui_kit::test]
+fn ui_viewer_toolbar_star_and_rotate(cx: &mut TestAppContext) {
+    let lib = basic_library();
+    let (handle, view) = open(cx, &lib);
+    settle(cx, handle, &view);
+    let id = with_view(cx, handle, &view, |v, _, _| v.vm().order()[0]);
+    open_viewer_on(cx, handle, &view, id);
+    advance(&lib, cx, handle, &view, 300);
+    cx.update_window(handle, |_, window, cx| {
+        window.click(ids::VIEWER_STAR, cx);
+        window.click(ids::VIEWER_ROTATE_RIGHT, cx);
+    })
+    .unwrap();
+    settle(cx, handle, &view);
+    let photo = lib.app.photos().get(id).unwrap().unwrap();
+    assert!(photo.starred);
+    assert_eq!(
+        lib.app.edits().stack(id).unwrap().ops,
+        vec![lb_core::EditOp::RotateQuarter { turns: 1 }]
+    );
+    cx.update_window(handle, |_, window, _| {
+        assert!(
+            window.try_find(ids::VIEWER_HINT).is_none(),
+            "a catalog rotation is saved, so there is no hint"
+        );
+    })
+    .unwrap();
+}

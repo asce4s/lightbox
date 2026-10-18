@@ -4,6 +4,7 @@ use crate::ids;
 use crate::render::GRID_PADDING;
 use crate::stage::{RenderJob, Stage, StageKind, frame_key};
 use crate::window::LightboxWindow;
+use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::prelude::*;
 use gpui_kit::{
@@ -510,13 +511,15 @@ impl LightboxWindow {
         self.toggle_star_targets(cx);
     }
 
-    /// Rotate a catalog photo by quarter turns. Positive is clockwise.
+    /// Rotate. Catalog photos push an edit; other files rotate for this session only.
     pub fn viewer_rotate(&mut self, turns: i8, cx: &mut Context<Self>) {
-        let Some(id) = self.viewer.as_ref().and_then(|v| v.vm.current_photo()) else {
-            return;
-        };
-        self.vm.rotate_on(&[id], turns);
-        self.viewer_reload(cx);
+        let ok = self
+            .viewer
+            .as_mut()
+            .is_some_and(|v| v.vm.rotate(turns).is_ok());
+        if ok {
+            self.viewer_reload(cx);
+        }
     }
 
     /// Delete asks for confirmation, then the existing trash path.
@@ -787,6 +790,7 @@ impl LightboxWindow {
             && self.viewer_image().is_none()
             && now.saturating_sub(v.opened_at) >= Duration::from_millis(120);
         let chrome = presented.chrome_opacity;
+        let hint = self.viewer.as_ref().and_then(|v| v.vm.rotation_hint());
         let text = hsla(0.0, 0.0, CHROME_TEXT, 1.0);
         let muted = hsla(0.0, 0.0, CHROME_MUTED, 1.0);
         let path = if error.is_some() {
@@ -892,6 +896,28 @@ impl LightboxWindow {
             );
         }
 
+        if let Some(hint) = hint {
+            stage = stage.child(
+                div()
+                    .id(ids::VIEWER_HINT)
+                    .test_support()
+                    .aria_label(hint)
+                    .absolute()
+                    .top(px(VIEWER_BAR_HEIGHT + 8.0))
+                    .left_0()
+                    .right_0()
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1()
+                            .rounded_md()
+                            .bg(hsla(0.0, 0.0, 0.08, 0.88))
+                            .child(hint),
+                    ),
+            );
+        }
         stage = stage
             .child(self.render_viewer_top(&name, &counter, chrome, text, cx))
             .child(self.render_viewer_toolbar(
@@ -1071,6 +1097,7 @@ impl LightboxWindow {
             .child(
                 Button::new(ids::VIEWER_STAR)
                     .label("☆")
+                    .disabled(!catalog)
                     .tooltip(if catalog {
                         "Star (S)"
                     } else {
@@ -1108,7 +1135,12 @@ impl LightboxWindow {
             .child(
                 Button::new(ids::VIEWER_EDIT)
                     .label("Edit")
-                    .tooltip("Edit (E)")
+                    .disabled(!catalog)
+                    .tooltip(if catalog {
+                        "Edit (E)"
+                    } else {
+                        "Add this folder to Lightbox to star photos"
+                    })
                     .on_click(cx.listener(move |this, _, window, cx| {
                         if let Some(photo) = this.viewer.as_ref().and_then(|v| v.vm.current_photo())
                         {

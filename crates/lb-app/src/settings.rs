@@ -3,7 +3,9 @@
 use crate::error::Result;
 use crate::events::AppEvent;
 use crate::lightbox::Lightbox;
+use crate::viewer::FolderSort;
 use lb_core::{GroupBy, SortOrder};
+use lb_media::{is_raw_extension, supported_extensions};
 use serde::{Deserialize, Serialize};
 
 /// Which colour scheme the window uses.
@@ -188,6 +190,113 @@ pub struct VideoSettings {
     pub ffmpeg_path: Option<String>,
 }
 
+/// How the viewer paints the area behind the photo (SPEC-VIEWER §V6, §V11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackdropMode {
+    /// Desktop blur when the OS supports it, otherwise the ambient texture.
+    #[default]
+    Auto,
+    /// Ask the window for a blurred desktop backdrop.
+    DesktopBlur,
+    /// Colour sampled from the photo.
+    Ambient,
+    /// Flat dark scrim.
+    Dim,
+}
+
+/// How much of the viewer motion plays (SPEC-VIEWER §V4, §V11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MotionLevel {
+    /// Full motion unless the OS asks for reduced motion.
+    #[default]
+    Auto,
+    /// Every transition in §V4.
+    Full,
+    /// Opacity crossfade only.
+    Reduced,
+    /// No motion.
+    Off,
+}
+
+/// What the mouse wheel does in the viewer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WheelAction {
+    /// Zoom at the pointer.
+    #[default]
+    Zoom,
+    /// Move to the next or previous photo.
+    Navigate,
+}
+
+/// Previous OS file-type defaults, kept so they can be restored (SPEC-VIEWER §V10).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedDefaults {
+    /// Backend-specific payload. Empty until registration stores one.
+    pub payload: String,
+}
+
+/// Viewer behaviour and file-type selection (SPEC-VIEWER §V11).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ViewerSettings {
+    /// Backdrop behind the photo.
+    pub backdrop: BackdropMode,
+    /// Motion level.
+    pub motion: MotionLevel,
+    /// Mouse wheel.
+    pub wheel: WheelAction,
+    /// Enlarge photos smaller than the fit area.
+    pub enlarge_small: bool,
+    /// Navigation wraps from the last photo to the first.
+    pub wrap: bool,
+    /// The filmstrip is drawn.
+    pub show_filmstrip: bool,
+    /// Order of a folder opened from outside the library.
+    pub folder_sort: FolderSort,
+    /// A single click on a cell opens the viewer.
+    pub single_click_opens: bool,
+    /// Extensions included when the user makes Lightbox the default viewer.
+    pub file_types: Vec<String>,
+    /// Defaults replaced by the last "make default", if we could read them.
+    pub saved_defaults: Option<SavedDefaults>,
+    /// The first-run banner was dismissed.
+    pub default_prompt_dismissed: bool,
+}
+
+impl Default for ViewerSettings {
+    fn default() -> Self {
+        Self {
+            backdrop: BackdropMode::Auto,
+            motion: MotionLevel::Auto,
+            wheel: WheelAction::Zoom,
+            enlarge_small: false,
+            wrap: false,
+            show_filmstrip: true,
+            folder_sort: FolderSort::NameNatural,
+            single_click_opens: false,
+            file_types: default_viewer_file_types(),
+            saved_defaults: None,
+            default_prompt_dismissed: false,
+        }
+    }
+}
+
+/// Extensions selected by default: every supported type except camera RAW.
+fn default_viewer_file_types() -> Vec<String> {
+    supported_extensions(lb_media::Capabilities {
+        heif: lb_media::heif_decoder_available(),
+        raw: lb_media::raw_decoder_available(),
+        video: cfg!(feature = "video"),
+    })
+    .into_iter()
+    .filter(|ext| !is_raw_extension(ext))
+    .map(str::to_owned)
+    .collect()
+}
+
 /// XMP sidecar write-back (SPEC §6.7.6).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -219,10 +328,12 @@ pub struct Settings {
     pub video: VideoSettings,
     /// XMP sidecars.
     pub xmp: XmpSettings,
+    /// Photo viewer and file types.
+    pub viewer: ViewerSettings,
 }
 
 /// The stored section names, in the order of [`Settings`].
-pub const SETTINGS_KEYS: [&str; 10] = [
+pub const SETTINGS_KEYS: [&str; 11] = [
     "theme",
     "grid",
     "library",
@@ -233,6 +344,7 @@ pub const SETTINGS_KEYS: [&str; 10] = [
     "map",
     "video",
     "xmp",
+    "viewer",
 ];
 
 impl Settings {
@@ -248,6 +360,7 @@ impl Settings {
             "map" => serde_json::to_string(&self.map),
             "video" => serde_json::to_string(&self.video),
             "xmp" => serde_json::to_string(&self.xmp),
+            "viewer" => serde_json::to_string(&self.viewer),
             _ => return None,
         })
     }
@@ -273,6 +386,7 @@ impl Settings {
             "map" => parse(json, &mut self.map),
             "video" => parse(json, &mut self.video),
             "xmp" => parse(json, &mut self.xmp),
+            "viewer" => parse(json, &mut self.viewer),
             _ => true,
         }
     }
