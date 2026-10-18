@@ -18,6 +18,20 @@ original file), and share (export, slideshow, collage).
 The full product specification is `SPEC.md`; `TASKS.md` records progress, decisions and the
 current status of every task.
 
+## Contents
+
+- [Status](#status)
+- [Install](#install)
+  - [Download a release](#download-a-release)
+  - [Arch Linux](#arch-linux)
+  - [What you get](#what-you-get)
+  - [Code signing](#code-signing)
+- [Build from source](#build-from-source)
+- [Data](#data)
+- [Use](#use)
+- [Develop](#develop)
+- [License](#license)
+
 ## Status
 
 The services, view-models and command line cover every feature of the specification and are
@@ -30,7 +44,7 @@ the People face grid with naming and merging, and the Picasa import preview.
 
 ## Install
 
-### Download a build
+### Download a release
 
 Download the archive for your system from the
 [releases page](https://github.com/asce4s/lightbox/releases). Each release also has a
@@ -49,15 +63,23 @@ Vulkan loader. It still needs a Vulkan driver and the usual font, Wayland and X1
 ### Arch Linux
 
 ```sh
-yay -S lightbox-bin
+yay -S lightbox-git
 # or
-paru -S lightbox-bin
+paru -S lightbox-git
 ```
 
-`lightbox-bin` installs the Linux `.tar.gz` from the GitHub release into `/usr/bin` (the AppImage
-stays a direct download). `ffmpeg` is optional and enables video thumbnails. Publishing that
-package needs an [AUR](https://aur.archlinux.org/) account whose SSH private key is stored as the
-`AUR_SSH_PRIVATE_KEY` repository secret (no passphrase). A `v*` tag then updates `lightbox-bin`.
+[`lightbox-git`](https://aur.archlinux.org/packages/lightbox-git) builds the current git revision.
+`ffmpeg` is optional and enables video thumbnails.
+
+### What you get
+
+The archives also contain `lightbox-cli`, the command-line companion.
+
+`ffmpeg` and `ffprobe` on the `PATH` enable video thumbnails and metadata (video support works
+without them in a reduced form). Face recognition needs the models from `cargo xtask models` and
+an ONNX Runtime library (`ORT_DYLIB_PATH`; see [Data](#data)).
+
+### Code signing
 
 Builds are unsigned. On macOS, right-click the app and choose Open the first time (or run
 `xattr -dr com.apple.quarantine Lightbox.app`). To sign and notarize your own build, sign
@@ -65,26 +87,30 @@ Builds are unsigned. On macOS, right-click the app and choose Open the first tim
 then `xcrun notarytool submit` the `.dmg` and `xcrun stapler staple` it. On Windows, sign
 `lightbox.exe` with `signtool sign` before zipping if you need SmartScreen reputation.
 
-The archives also contain `lightbox-cli`, the command-line companion.
-
-`ffmpeg` and `ffprobe` on the `PATH` enable video thumbnails and metadata (video support works
-without them in a reduced form). Face recognition needs the models from `cargo xtask models` and
-an ONNX Runtime library (see below).
-
 ## Build from source
+
+### Toolchain
 
 Rust 1.99 (pinned by `rust-toolchain.toml`; `rustup` installs it on first use).
 
-### Build dependencies
+### System packages
 
 | System | Install |
 |---|---|
-| Debian / Ubuntu | `sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang` (add `ffmpeg` for video, `libheif-dev` and `libheif-plugin-libde265` for the `heif` feature) |
+| Debian / Ubuntu | see below |
 | Fedora | `sudo dnf install libxkbcommon-devel libxkbcommon-x11-devel wayland-devel vulkan-loader-devel libxcb-devel fontconfig-devel freetype-devel openssl-devel pkgconf clang` |
 | macOS | Xcode command line tools (`xcode-select --install`); `brew install ffmpeg` for video |
 | Windows | Visual Studio Build Tools (MSVC, Windows SDK); `winget install ffmpeg` for video |
 
-### Build and run
+Debian / Ubuntu:
+
+```sh
+sudo apt install libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libx11-xcb-dev libxcb1-dev libfontconfig-dev libfreetype-dev libssl-dev pkg-config clang
+```
+
+Add `ffmpeg` for video, and `libheif-dev` plus `libheif-plugin-libde265` for the `heif` feature.
+
+### Commands
 
 ```sh
 cargo run -p lightbox --release          # the app
@@ -92,11 +118,13 @@ cargo run -p lb-cli -- --help            # the CLI (binary name: lightbox-cli)
 cargo xtask package                      # release archive for this OS in dist/
 ```
 
+### Features
+
 Optional features of `lb-app` (all on by default): `faces`, `video`, `map`. Core code builds and
 passes its tests without them (`cargo test -p lb-app --no-default-features`). The `onnx` feature
 adds the real face-detection networks and is off by default.
 
-### Where data lives
+## Data
 
 `LIGHTBOX_HOME` moves everything under one folder (`<home>/data`, `<home>/cache`); without it the
 platform's per-user data and cache directories are used.
@@ -108,7 +136,9 @@ platform's per-user data and cache directories are used.
 | Face models directory override | `LIGHTBOX_FACE_MODELS` |
 | ONNX Runtime library | `ORT_DYLIB_PATH`, a `libonnxruntime` next to the models, or the system path |
 
-## Using the app
+## Use
+
+### Library
 
 1. Add the folders you want in the library (Folder Manager): **watch** (kept in sync), **scan
    once**, or **exclude**.
@@ -150,15 +180,22 @@ platform's per-user data and cache directories are used.
 | Editor, crop tool | Arrow keys (`Shift` = 10 px) | Nudge the crop |
 | Slideshow | `Space`, `Left` / `Right`, `Esc` | Play or pause, previous / next, exit |
 
-## Default photo viewer
+### Default photo viewer
+
+#### Register
 
 Starting Lightbox registers it as an *available* viewer for the picture types it can open. It
-does not change the app that currently opens those files. Becoming the default is a separate
-step: the gear in the title bar opens **Photo viewer & file types**, where you tick the types
-and choose **Make Lightbox the default photo viewer**. The same action is on the first-run
-banner ("Open photos from your file manager with Lightbox?"). **Not now** hides that banner
-for good. **Restore previous defaults** puts back the handlers recorded before that change,
-when the operating system let Lightbox read them.
+does not change the app that currently opens those files.
+
+#### Make default
+
+Becoming the default is a separate step: the gear in the title bar opens
+**Photo viewer & file types**, where you tick the types and choose **Make Lightbox the default
+photo viewer**. The same action is on the first-run banner ("Open photos from your file manager
+with Lightbox?"). **Not now** hides that banner for good. **Restore previous defaults** puts
+back the handlers recorded before that change, when the operating system let Lightbox read them.
+
+#### Per system
 
 What the button can do depends on the system:
 
@@ -171,6 +208,8 @@ What the button can do depends on the system:
 Flatpak and Snap builds are out of scope: those packages hand associations to the portal, and
 this desktop file is not how they register types.
 
+#### Unregister
+
 Uninstall (or moving the binary) should drop the entries Lightbox added:
 
 ```sh
@@ -181,7 +220,7 @@ On Linux that removes the viewer desktop file, the icon, and mimeapps lines that
 Lightbox. On Windows it deletes only the keys recorded in Lightbox's association manifest.
 On macOS there is nothing to remove at uninstall time; document types leave with the `.app`.
 
-## Command line
+### Command line
 
 `lightbox-cli` works on the same library as the app (`LIGHTBOX_HOME` applies). Add `--json` for
 machine-readable output. Exit codes: 0 success, 1 bad input, 2 runtime failure.
@@ -208,7 +247,9 @@ lightbox-cli doctor                       # environment report and catalog integ
 
 `lightbox-cli <command> --help` lists every option.
 
-## Architecture
+## Develop
+
+### Architecture
 
 ```text
                  ┌────────────────────────────┐   ┌──────────────┐
@@ -255,7 +296,7 @@ lightbox-cli doctor                       # environment report and catalog integ
 
 The dependency rules are enforced by `cargo xtask ci` (SPEC §4.2).
 
-## Development
+### Checks
 
 ```sh
 cargo xtask ci          # everything CI runs: fmt, clippy, dependency rules, fixtures, tests
