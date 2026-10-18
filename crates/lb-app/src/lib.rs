@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 mod albums;
+mod assoc;
 mod atomic;
 mod collage;
 mod crash;
@@ -16,6 +17,8 @@ mod faces;
 mod files;
 mod history;
 mod import;
+mod instance;
+mod launch;
 mod library;
 mod lightbox;
 #[cfg(feature = "map")]
@@ -39,6 +42,7 @@ pub mod vm;
 mod xmp;
 
 pub use albums::AlbumService;
+pub use assoc::{AssocService, register_available_viewer};
 pub use atomic::{TEMP_SUFFIX, write_atomic, write_bytes_atomic};
 pub use collage::{
     CollageLayout, CollageOptions, CollageService, CollageSize, CreatedCollage, PREVIEW_EDGE,
@@ -62,6 +66,16 @@ pub use import::{
     FileCopier, FolderNaming, IMPORT_TEMP_SUFFIX, ImportCandidate, ImportHandle, ImportOptions,
     ImportReport, ImportService, ImportedFile, StdCopier,
 };
+pub use instance::{Acquire, InstanceServer, acquire, forward_launch};
+pub use launch::{
+    Launch, MACOS_OPEN_URL_WAIT, MacosDecision, Platform, apply_startup, file_url, macos_route,
+    open_library_from_viewer, parse_launch, unregister_file_types,
+};
+pub use lb_assoc::Result as AssocResult;
+pub use lb_assoc::{
+    AppInstall, AssocBackend, AssocError, AssocStatus, FormatAssoc, MakeDefaultOutcome,
+    MakeDefaultResult, running_as_installed_app,
+};
 pub use lb_jobs::JobQueue;
 pub use lb_scan::ScanSummary;
 pub use lb_thumbs::ThumbSize;
@@ -81,12 +95,13 @@ pub use search::{
     FilterChips, Group, GroupKey, MonthBucket, PhotoQueryResult, SearchService, ViewQuery,
 };
 pub use settings::{
-    ExportSettings, FacesSettings, GridSettings, LibrarySettings, MapSettings, SETTINGS_KEYS,
-    Settings, SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings,
-    Transition, VideoSettings, XmpSettings,
+    BackdropMode, ExportSettings, FacesSettings, GridSettings, HostPlatform, LibrarySettings,
+    MapSettings, MotionLevel, ResolvedBackdrop, SETTINGS_KEYS, SavedDefaults, Settings,
+    SettingsService, SlideshowSettings, ThemeChoice, ThumbChoice, ThumbSettings, Transition,
+    VideoSettings, ViewerSettings, WheelAction, XmpSettings, resolve_standalone_backdrop,
 };
 pub use system::{SystemOpener, SystemTrash};
 pub use tags::{AUTOCOMPLETE_LIMIT, TagService};
 pub use thumbs::{ThumbService, ThumbTicket};
-pub use viewer::ViewerService;
+pub use viewer::{ViewerPerf, ViewerService, capture_viewer_perf};
 pub use xmp::{XmpReport, XmpService};

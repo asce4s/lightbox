@@ -1,0 +1,16 @@
+---
+source: crates/lb-assoc/tests/assoc.rs
+expression: text
+---
+[Desktop Entry]
+Type=Application
+Name=Lightbox Photo Viewer
+GenericName=Image Viewer
+Comment=View and organise photos
+Exec=/usr/bin/lightbox view %F
+Icon=app.lightbox.Lightbox
+Terminal=false
+Categories=Graphics;Viewer;Photography;
+MimeType=image/jpeg;image/png;image/gif;image/webp;image/bmp;image/tiff;
+StartupNotify=true
+StartupWMClass=lightbox

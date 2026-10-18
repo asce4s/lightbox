@@ -235,11 +235,12 @@ impl LightboxWindow {
         let id = e.vm.photo();
         if self.viewer.is_some() {
             self.viewer_reload(cx);
+            window.focus(&self.viewer_focus, cx);
         } else {
             self.vm.click(id, lb_app::vm::Modifiers::NONE);
             self.reveal_focused();
+            window.focus(&self.focus, cx);
         }
-        window.focus(&self.focus, cx);
         cx.notify();
     }
 

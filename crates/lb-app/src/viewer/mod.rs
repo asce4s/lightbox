@@ -4,7 +4,10 @@ mod ambient;
 mod entry;
 mod loader;
 mod motion;
+mod perf;
+mod playback;
 mod service;
+mod tiles;
 mod transform;
 
 pub use ambient::{AmbientCache, bucket_stage};
@@ -13,7 +16,17 @@ pub use entry::{
     entry_from_id, list_folder,
 };
 pub use loader::{LoadLevel, MEMORY_BUDGET, MediaBytes, ViewerLoader};
+pub use perf::{ViewerPerf, capture_viewer_perf};
+pub use playback::{
+    CHECKER_DARK, CHECKER_LIGHT, CHECKER_PX, Clip, ClipboardBody, checker_rgb, clipboard_for_path,
+    composite_on_checker, decode_rgba, frame_index, has_alpha, image_for_clipboard, read_animation,
+    save_checker_png, save_rgba_png,
+};
 pub use service::ViewerService;
+pub use tiles::{
+    DecodedTile, HUGE_PIXELS, TILE_PX, TileRef, TileSource, decode_visible, needs_tiles,
+    visible_tiles,
+};
 
 pub use motion::{
     LayerState, Motion, MotionMode, Presented, ease_in_cubic, ease_in_out_cubic, ease_out_cubic,

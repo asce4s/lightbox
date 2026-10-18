@@ -60,8 +60,44 @@ ids! {
     MENU_HIDE = "menu-hide",
     MENU_REVEAL = "menu-reveal",
     VIEWER = "viewer",
+    VIEWER_STAGE = "viewer-stage",
+    VIEWER_BACKDROP = "viewer-backdrop",
+    VIEWER_TITLE = "viewer-title",
+    VIEWER_COUNTER = "viewer-counter",
+    VIEWER_TOOLBAR = "viewer-toolbar",
+    VIEWER_PLAY = "viewer-play",
+    VIEWER_ROTATE_LEFT = "viewer-rotate-left",
+    VIEWER_ROTATE_RIGHT = "viewer-rotate-right",
+    VIEWER_STAR = "viewer-star",
+    VIEWER_ZOOM_FIT = "viewer-zoom-fit",
+    VIEWER_ZOOM_ACTUAL = "viewer-zoom-actual",
+    VIEWER_DELETE = "viewer-delete",
+    VIEWER_OPEN_LIBRARY = "viewer-open-library",
+    VIEWER_ADD_FOLDER = "viewer-add-folder",
+    VIEWER_HINT = "viewer-hint",
+    VIEWER_LOADING = "viewer-loading",
+    VIEWER_ERROR_CARD = "viewer-error-card",
+    VIEWER_WINDOW = "viewer-window",
     VIEWER_NEXT = "viewer-next",
     VIEWER_PREV = "viewer-prev",
+    SETTINGS_BUTTON = "settings-button",
+    SETTINGS_VIEWER = "settings-viewer",
+    SETTINGS_MAKE_DEFAULT = "settings-make-default",
+    SETTINGS_RESTORE_DEFAULTS = "settings-restore-defaults",
+    DEFAULT_VIEWER_BANNER = "default-viewer-banner",
+    BANNER_MAKE_DEFAULT = "banner-make-default",
+    BANNER_DISMISS = "banner-dismiss",
+    SETTINGS_BACKDROP = "settings-backdrop",
+    SETTINGS_MOTION = "settings-motion",
+    SETTINGS_WHEEL = "settings-wheel",
+    SETTINGS_ENLARGE = "settings-enlarge",
+    SETTINGS_WRAP = "settings-wrap",
+    SETTINGS_FILMSTRIP = "settings-filmstrip",
+    SETTINGS_SORT = "settings-sort",
+    SETTINGS_SINGLE_CLICK = "settings-single-click",
+    SETTINGS_CLOSE = "settings-close",
+    SETTINGS_NOTE = "settings-note",
+    SETTINGS_TYPE_LIST = "settings-type-list",
     EDITOR = "editor",
     EDITOR_TAB_BASIC = "editor-tab-basic",
     EDITOR_TAB_TUNING = "editor-tab-tuning",
@@ -197,6 +233,11 @@ pub fn effect_tile(name: &str) -> ElementId {
 /// A thumbnail in the viewer's filmstrip.
 pub fn filmstrip_cell(id: PhotoId) -> ElementId {
     named("filmstrip-cell", unsigned(id.get()))
+}
+
+/// A checkbox in the file-type list (`assoc-type` + extension).
+pub fn assoc_type(ext: &str) -> ElementId {
+    ElementId::Name(format!("assoc-type-{ext}").into())
 }
 
 /// An aspect preset button of the crop tool (`free`, `original`, `1x1`, ...).

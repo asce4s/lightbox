@@ -495,6 +495,19 @@ impl Motion {
         self.chrome.activity(now);
     }
 
+    /// Shifts the current image rect by `(dx, dy)` and settles there.
+    ///
+    /// Used for a drag-pan. A running transition is dropped so the photo follows the pointer.
+    pub fn translate_image(&mut self, now: Duration, dx: f32, dy: f32) {
+        let mut frame = self.sample_transition(now);
+        if let Some(img) = frame.image.as_mut() {
+            img.rect.x += dx;
+            img.rect.y += dy;
+        }
+        self.running = None;
+        self.settled = frame;
+    }
+
     /// The frame at `now`.
     pub fn presented(&self, now: Duration) -> Presented {
         let mut frame = self.sample_transition(now);

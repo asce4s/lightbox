@@ -7,13 +7,17 @@ use gpui_kit::component::slider::{SliderEvent, SliderState};
 use gpui_kit::component::{ResizableState, VirtualListScrollHandle};
 use gpui_kit::{
     AnyWindowHandle, App, AppContext as _, Context, Entity, FocusHandle, Focusable, Pixels, Point,
-    Result, ScrollStrategy, Subscription, Window, WindowBounds, WindowOptions, px, size,
+    Result, ScrollStrategy, SharedString, Subscription, TitlebarOptions, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowOptions, px, size,
 };
 use lb_app::vm::{
     ConfirmVm, ExportDialogVm, LibraryVm, Modifiers, NavKey, RenameVm, SidebarKey, SidebarVm,
     ZOOM_RANGE,
 };
-use lb_app::{AppEvent, EventReceiver, Lightbox, ThemeChoice, ThumbSize};
+use lb_app::{
+    AppEvent, BackdropMode, EventReceiver, HostPlatform, InstanceServer, Launch, Lightbox,
+    ResolvedBackdrop, ThemeChoice, ThumbSize, resolve_standalone_backdrop,
+};
 use lb_core::{AlbumId, PhotoId};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -79,6 +83,8 @@ pub enum Overlay {
         /// Keeps the field subscription alive.
         _sub: Subscription,
     },
+    /// Photo viewer options and file types.
+    Settings,
 }
 
 /// Root view of the library.
@@ -88,11 +94,13 @@ pub struct LightboxWindow {
     pub(crate) sidebar: SidebarVm,
     events: EventReceiver<AppEvent>,
     pub(crate) focus: FocusHandle,
+    pub(crate) viewer_focus: FocusHandle,
     pub(crate) scroll: VirtualListScrollHandle,
     pub(crate) panels: Entity<ResizableState>,
     pub(crate) search: Entity<InputState>,
     pub(crate) zoom: Entity<SliderState>,
     pub(crate) overlay: Overlay,
+    pub(crate) settings_panel: Option<crate::settings_viewer::ViewerSettingsState>,
     pub(crate) toast: Option<String>,
     pub(crate) thumbs: HashMap<(PhotoId, ThumbSize), PathBuf>,
     requested: HashSet<(PhotoId, ThumbSize)>,
@@ -112,6 +120,9 @@ pub struct LightboxWindow {
     pub(crate) timeline_drag: Option<crate::timeline::TimelineDrag>,
     pub(crate) band: Option<crate::band::BandDrag>,
     pub(crate) grid_bounds: crate::band::GridBounds,
+    instance: Option<InstanceServer>,
+    pub(crate) standalone: bool,
+    library_beside: bool,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -139,6 +150,7 @@ impl LightboxWindow {
         });
         let panels = cx.new(|_| ResizableState::default());
         let focus = cx.focus_handle();
+        let viewer_focus = cx.focus_handle();
         let mut subscriptions = Vec::new();
         subscriptions.push(cx.subscribe(&search, |this: &mut Self, input, event, cx| {
             let text = input.read(cx).value().to_string();
@@ -165,11 +177,13 @@ impl LightboxWindow {
             vm,
             sidebar,
             focus,
+            viewer_focus,
             scroll: VirtualListScrollHandle::new(),
             panels,
             search,
             zoom,
             overlay: Overlay::None,
+            settings_panel: None,
             toast: None,
             thumbs: HashMap::new(),
             requested: HashSet::new(),
@@ -189,6 +203,9 @@ impl LightboxWindow {
             timeline_drag: None,
             band: None,
             grid_bounds: crate::band::GridBounds::default(),
+            instance: None,
+            standalone: false,
+            library_beside: false,
             _subscriptions: subscriptions,
         };
         if ticker {
@@ -205,8 +222,73 @@ impl LightboxWindow {
         this
     }
 
-    /// Opens the library window on `cx`. [`gpui_kit::init`] must have run.
-    pub fn open(app: Lightbox, cx: &mut App) -> Result<(AnyWindowHandle, Entity<Self>)> {
+    /// Opens the library window on `cx` and drains `instance` from the pump.
+    /// [`gpui_kit::init`] must have run.
+    pub fn open(
+        app: Lightbox,
+        instance: InstanceServer,
+        cx: &mut App,
+    ) -> Result<(AnyWindowHandle, Entity<Self>)> {
+        gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
+            cx.new(|cx| {
+                let mut this = Self::new(app, true, window, cx);
+                this.instance = Some(instance);
+                this
+            })
+        })
+    }
+
+    /// Opens a borderless viewer window covering the primary display.
+    pub fn open_standalone(
+        app: Lightbox,
+        paths: Vec<PathBuf>,
+        instance: InstanceServer,
+        cx: &mut App,
+    ) -> Result<(AnyWindowHandle, Entity<Self>)> {
+        Self::open_standalone_with(app, paths, instance, true, cx)
+    }
+
+    /// Like [`Self::open_standalone`] without the event ticker. Tests pump by hand.
+    pub fn open_standalone_for_test(
+        app: Lightbox,
+        paths: Vec<PathBuf>,
+        instance: InstanceServer,
+        cx: &mut App,
+    ) -> (AnyWindowHandle, Entity<Self>) {
+        match Self::open_standalone_with(app, paths, instance, false, cx) {
+            Ok(opened) => opened,
+            Err(error) => panic!("could not open the viewer window: {error}"),
+        }
+    }
+
+    fn open_standalone_with(
+        app: Lightbox,
+        paths: Vec<PathBuf>,
+        instance: InstanceServer,
+        ticker: bool,
+        cx: &mut App,
+    ) -> Result<(AnyWindowHandle, Entity<Self>)> {
+        let options = standalone_window_options(&app, &paths, cx);
+        let opened = gpui_kit::open_window(options, cx, move |window, cx| {
+            cx.new(|cx| {
+                let mut this = Self::new(app, ticker, window, cx);
+                this.standalone = true;
+                this.instance = Some(instance);
+                let size = window.viewport_size();
+                this.viewport = (f32::from(size.width), f32::from(size.height));
+                this.open_external_paths(&paths, cx);
+                let title = viewer_window_title(&paths);
+                window.set_window_title(&title);
+                window.activate_window();
+                this
+            })
+        })?;
+        cx.activate(true);
+        Ok(opened)
+    }
+
+    /// Opens a library window that does not own the instance endpoint.
+    pub fn open_library(app: Lightbox, cx: &mut App) -> Result<(AnyWindowHandle, Entity<Self>)> {
         gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
             cx.new(|cx| Self::new(app, true, window, cx))
         })
@@ -296,6 +378,7 @@ impl LightboxWindow {
     /// Drains application events and applies a due search. Called by the ticker and by tests.
     pub fn pump(&mut self, cx: &mut Context<Self>) {
         let mut changed = self.vm.tick();
+        changed |= self.drain_instance(cx);
         changed |= self.tick_slideshow();
         let mut refresh_sidebar = false;
         let mut viewer_stale = false;
@@ -388,8 +471,45 @@ impl LightboxWindow {
             }
             changed = true;
         }
-        if changed {
+        if changed || self.viewer_needs_frame() {
             cx.notify();
+        }
+    }
+
+    fn drain_instance(&mut self, cx: &mut Context<Self>) -> bool {
+        let Some(instance) = &self.instance else {
+            return false;
+        };
+        let mut launches = Vec::new();
+        while let Some(launch) = instance.poll() {
+            launches.push(launch);
+        }
+        if launches.is_empty() {
+            return false;
+        }
+        for launch in launches {
+            match launch {
+                Launch::View { paths, .. } => self.open_external_paths(&paths, cx),
+                Launch::Library if self.standalone => self.open_library_beside(cx),
+                Launch::Library | Launch::UnregisterFileTypes => {}
+            }
+        }
+        true
+    }
+
+    fn open_library_beside(&mut self, cx: &mut Context<Self>) {
+        if self.library_beside {
+            return;
+        }
+        self.library_beside = true;
+        let app = self.app.clone();
+        std::thread::spawn(move || {
+            if let Err(error) = lb_app::open_library_from_viewer(&app) {
+                tracing::warn!(%error, "could not start the library");
+            }
+        });
+        if let Err(error) = Self::open_library(self.app.clone(), cx) {
+            tracing::error!(%error, "could not open the library window");
         }
     }
 
@@ -552,6 +672,7 @@ impl LightboxWindow {
     /// Closes any overlay and returns keyboard focus to the grid.
     pub fn close_overlay(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.overlay = Overlay::None;
+        self.settings_panel = None;
         window.focus(&self.focus, cx);
         cx.notify();
     }
@@ -566,6 +687,56 @@ impl Focusable for LightboxWindow {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {
         self.focus.clone()
     }
+}
+
+fn current_platform() -> HostPlatform {
+    if cfg!(target_os = "macos") {
+        HostPlatform::Macos
+    } else if cfg!(windows) {
+        HostPlatform::Windows
+    } else {
+        HostPlatform::Linux
+    }
+}
+
+fn standalone_window_options(app: &Lightbox, paths: &[PathBuf], cx: &App) -> WindowOptions {
+    let mode = app
+        .settings()
+        .load()
+        .map(|settings| settings.viewer.backdrop)
+        .unwrap_or(BackdropMode::Auto);
+    // Reduce-transparency is queried when the OS API is linked. This build has no
+    // NSWorkspace or registry dependency, so the preference reads as off.
+    let resolved = resolve_standalone_backdrop(mode, current_platform(), false);
+    let window_background = match resolved {
+        ResolvedBackdrop::DesktopBlur => WindowBackgroundAppearance::Blurred,
+        ResolvedBackdrop::Ambient | ResolvedBackdrop::Dim => WindowBackgroundAppearance::Opaque,
+    };
+    let bounds = cx.primary_display().map(|display| display.bounds());
+    WindowOptions {
+        window_bounds: bounds.map(WindowBounds::Windowed),
+        titlebar: Some(TitlebarOptions {
+            title: Some(SharedString::from(viewer_window_title(paths))),
+            appears_transparent: true,
+            traffic_light_position: None,
+        }),
+        focus: true,
+        show: true,
+        is_resizable: false,
+        is_movable: false,
+        window_decorations: Some(WindowDecorations::Client),
+        window_background,
+        ..WindowOptions::default()
+    }
+}
+
+fn viewer_window_title(paths: &[PathBuf]) -> String {
+    let name = paths
+        .first()
+        .and_then(|path| path.file_name())
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Lightbox".to_owned());
+    format!("{name} — Lightbox")
 }
 
 /// Applies a colour scheme to the whole application.

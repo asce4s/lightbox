@@ -18,6 +18,7 @@ pub(crate) const GRID_PADDING: f32 = GAP;
 
 impl Render for LightboxWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.complete_viewer_close(window, cx);
         let theme = cx.theme().clone();
         let viewport = window.viewport_size();
         self.viewport = (f32::from(viewport.width), f32::from(viewport.height));
@@ -36,11 +37,16 @@ impl Render for LightboxWindow {
             .bg(theme.background)
             .text_color(theme.foreground)
             .text_sm();
+        if self.standalone {
+            window.set_window_title(&self.standalone_title());
+        }
+        let show_library = !self.standalone
+            && (self.route() == Route::Library
+                || (self.route() == Route::Viewer && self.viewer_shows_library()));
         let root = match self.route() {
             Route::Slideshow => root.child(self.render_slideshow(cx)),
             Route::Editor => root.child(self.render_editor(window, cx)),
-            Route::Viewer => root.child(self.render_viewer(cx)),
-            Route::Library => {
+            Route::Viewer | Route::Library if show_library => {
                 let info = self.info_open;
                 let sidebar = self.render_sidebar(cx);
                 let grid = self.render_grid(window, cx);
@@ -61,13 +67,30 @@ impl Render for LightboxWindow {
                             .size_range(px(200.)..px(480.))
                             .child(info_panel),
                     );
-                root.child(self.render_title_bar(cx))
-                    .child(self.render_chips(cx))
-                    .child(div().flex_1().min_h_0().child(main))
-                    .child(self.render_timeline(cx))
-                    .child(self.render_tray(cx))
-                    .child(self.render_status_bar(window, cx))
+                {
+                    let column = root.child(self.render_title_bar(cx));
+                    let column = if self.show_default_viewer_banner() {
+                        column.child(self.render_default_viewer_banner(cx))
+                    } else {
+                        column
+                    };
+                    column
+                        .child(self.render_chips(cx))
+                        .child(div().flex_1().min_h_0().child(main))
+                        .child(self.render_timeline(cx))
+                        .child(self.render_tray(cx))
+                        .child(self.render_status_bar(window, cx))
+                }
             }
+            Route::Viewer | Route::Library => root,
+        };
+        let root = if self.route() == Route::Viewer {
+            if !self.viewer_focus.is_focused(window) {
+                window.focus(&self.viewer_focus, cx);
+            }
+            root.child(self.render_viewer(cx))
+        } else {
+            root
         };
         root.children(overlay).children(self.render_toast(cx))
     }
@@ -77,6 +100,10 @@ impl LightboxWindow {
     fn render_grid(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let width = self.grid_width(window, cx) - 2.0 * GRID_PADDING;
         self.vm.set_viewport_width(width);
+        let grid_h = f32::from(self.grid_bounds.get().size.height);
+        if grid_h > 1.0 {
+            self.vm.set_viewport_height(grid_h);
+        }
         self.track_scroll_anchor();
         let theme = cx.theme().clone();
         if self.vm.layout().rows.is_empty() {
@@ -349,7 +376,7 @@ impl LightboxWindow {
         }
         match self.route() {
             Route::Viewer => {
-                self.viewer_key(key, window, cx);
+                self.viewer_key(key, m.shift, cmd, window, cx);
                 return;
             }
             Route::Editor => {

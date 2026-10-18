@@ -3,13 +3,16 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use chrono::{Duration as Days, NaiveDate, NaiveDateTime};
-use lb_app::{Lightbox, LightboxOptions, ViewQuery, ViewSource};
+use lb_app::viewer::{
+    LoadLevel, MEMORY_BUDGET, MediaBytes, Motion, MotionMode, RectF, ViewerLoader,
+};
+use lb_app::{Lightbox, LightboxOptions, ViewQuery, ViewSource, capture_viewer_perf};
 use lb_catalog::{NewFolder, PhotoUpsert};
 use lb_core::{Format, PhotoId, RootMode};
 use lb_jobs::JobQueue;
-use lb_testkit::perf::{check, check_memory, scale, time};
+use lb_testkit::perf::{check, check_memory, enforced, scale, time};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const FOLDERS: usize = 100;
 
@@ -167,4 +170,163 @@ fn scan_2000_fixtures_under_budget() {
         (0, 0, n)
     );
     check("rescan_2000_unchanged", rescan, Duration::from_secs(2));
+}
+
+struct Counting {
+    reads: Vec<(usize, LoadLevel)>,
+}
+
+impl MediaBytes for Counting {
+    fn read(&mut self, index: usize, level: LoadLevel) -> lb_app::Result<u64> {
+        self.reads.push((index, level));
+        Ok(1_000)
+    }
+}
+
+fn bench_jpeg(dir: &Path) -> std::path::PathBuf {
+    let (w, h) = if enforced() { (6000, 4000) } else { (64, 48) };
+    let path = dir.join("bench.jpg");
+    let img = image::RgbImage::from_fn(w, h, |x, y| {
+        image::Rgb([(x % 251) as u8, (y % 251) as u8, 40])
+    });
+    img.save(&path).unwrap();
+    path
+}
+
+/// §V12: no file decode between open and the first frame, and that work stays within 4 ms.
+#[test]
+fn viewer_open_frame_under_budget() {
+    let home = tempfile::tempdir().unwrap();
+    let lb = Lightbox::open_with(home.path(), JobQueue::inline(), options()).unwrap();
+    let ids = populate(&lb, 1);
+    let mut media = Counting { reads: Vec::new() };
+    let loader = ViewerLoader::open(1, 0, &[true], &[false]);
+    assert!(media.reads.is_empty(), "opening the loader decodes nothing");
+    let _ = &mut media;
+    let _ = loader.shown(0);
+    let (_, elapsed) = time(|| {
+        let mut vm = lb_app::vm::ViewerVm::open(&lb, ids.clone(), ids[0]).unwrap();
+        vm.set_stage((1280.0, 800.0));
+        vm.begin_open(
+            Duration::ZERO,
+            None,
+            RectF {
+                x: 24.0,
+                y: 48.0,
+                w: 800.0,
+                h: 600.0,
+            },
+        );
+        vm.presented(Duration::ZERO)
+    });
+    check("viewer_open_frame", elapsed, Duration::from_millis(4));
+}
+
+/// §V12: L2 of a 24 MP JPEG (smoke-sized unless `LIGHTBOX_PERF` is set).
+#[test]
+fn viewer_l2_24mp_under_budget() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = bench_jpeg(dir.path());
+    let (_, elapsed) = time(|| {
+        let image = lb_media::decode(&path, Some(2560)).unwrap();
+        assert!(image.width() > 0);
+    });
+    check("viewer_l2_24mp", elapsed, Duration::from_millis(150));
+}
+
+/// §V12: a preloaded neighbour is already L2, so navigation decodes nothing.
+#[test]
+fn viewer_preloaded_neighbour_under_budget() {
+    let mut media = Counting { reads: Vec::new() };
+    let mut loader = ViewerLoader::open(3, 0, &[true; 3], &[false; 3]);
+    loader.poll(Duration::ZERO, &mut media);
+    loader.poll(Duration::ZERO, &mut media);
+    assert!(media.reads.contains(&(1, LoadLevel::L2)));
+    let before = media.reads.len();
+    let (_, elapsed) = time(|| {
+        loader.navigate(1, Duration::from_millis(1_000));
+        assert_eq!(loader.shown(1), Some(LoadLevel::L2));
+        loader.poll(Duration::from_millis(1_000), &mut media);
+    });
+    assert!(
+        !media.reads[before..].contains(&(1, LoadLevel::L2)),
+        "a preloaded neighbour is not decoded again"
+    );
+    check(
+        "viewer_preloaded_neighbour",
+        elapsed,
+        Duration::from_millis(4),
+    );
+}
+
+/// §V12: library already open, so the image does not pay for process start.
+#[test]
+fn viewer_warm_launch_image_under_budget() {
+    let home = tempfile::tempdir().unwrap();
+    let photos = tempfile::tempdir().unwrap();
+    let path = bench_jpeg(photos.path());
+    let lb = Lightbox::open_with(home.path(), JobQueue::inline(), options()).unwrap();
+    let origin = Instant::now();
+    let (_, elapsed) = time(|| capture_viewer_perf(&lb, &path, origin).unwrap());
+    check(
+        "viewer_warm_launch_image",
+        elapsed,
+        Duration::from_millis(150),
+    );
+}
+
+/// §V12: one transition sample (p95 of 100) stays within 4 ms.
+#[test]
+fn viewer_transition_frame_under_budget() {
+    let mut motion = Motion::new(MotionMode::Full, (1920.0, 1080.0));
+    motion.open_plain(
+        Duration::ZERO,
+        RectF {
+            x: 40.0,
+            y: 80.0,
+            w: 1200.0,
+            h: 800.0,
+        },
+    );
+    let mut samples = Vec::with_capacity(100);
+    for step in 0..100 {
+        let now = Duration::from_millis(step * 3);
+        let (_, elapsed) = time(|| motion.presented(now));
+        samples.push(elapsed);
+    }
+    samples.sort();
+    let p95 = samples[94];
+    check("viewer_transition_frame", p95, Duration::from_millis(4));
+}
+
+/// §V12: decoded viewer images stay inside the 512 MB cap.
+#[test]
+fn viewer_decoded_memory_under_budget() {
+    assert_eq!(MEMORY_BUDGET, 512 * 1024 * 1024);
+    check_memory("viewer_decoded_image", 512.0);
+}
+
+/// `lightbox view --perf-json` fields, produced without a window.
+#[test]
+fn viewer_perf_json_reports_milestones() {
+    let home = tempfile::tempdir().unwrap();
+    let photos = tempfile::tempdir().unwrap();
+    let path = photos.path().join("one.jpg");
+    image::RgbImage::from_pixel(32, 24, image::Rgb([10, 20, 30]))
+        .save(&path)
+        .unwrap();
+    let lb = Lightbox::open_with(home.path(), JobQueue::inline(), options()).unwrap();
+    let report = capture_viewer_perf(&lb, &path, Instant::now()).unwrap();
+    assert!(report.process_start_ms <= report.first_frame_ms);
+    assert!(report.first_frame_ms <= report.first_image_ms);
+    assert_eq!(report.first_image_ms, report.l2_ms);
+    let json = report.to_json();
+    for key in [
+        "process_start_ms",
+        "first_frame_ms",
+        "first_image_ms",
+        "l2_ms",
+    ] {
+        assert!(json.contains(&format!("\"{key}\"")), "{json}");
+    }
 }

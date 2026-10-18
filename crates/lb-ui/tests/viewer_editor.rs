@@ -9,6 +9,7 @@ use gpui_kit::{AnyWindowHandle, AppContext as _, Entity, TestAppContext};
 use lb_app::vm::ZoomMode;
 use lb_core::PhotoId;
 use lb_ui::{LightboxWindow, Route, ids};
+use std::time::Duration;
 
 type View = Entity<LightboxWindow>;
 
@@ -55,6 +56,10 @@ fn ui_open_viewer_and_navigate(cx: &mut TestAppContext) {
     assert_eq!(all.len(), 5);
 
     open_viewer_on(cx, handle, &view, all[0]);
+    // The overlay open runs for 260 ms; chrome is hidden and the library is still
+    // mounted until the backdrop is opaque. See Decisions, M13.6.
+    lib.clock.advance(Duration::from_millis(300));
+    settle(cx, handle, &view);
     assert_eq!(
         with_view(cx, handle, &view, |v, _, _| v.route()),
         Route::Viewer
@@ -128,6 +133,9 @@ fn ui_viewer_escape_returns_focus(cx: &mut TestAppContext) {
     assert_eq!(current(cx, handle, &view), all[4]);
 
     press(cx, handle, &view, "escape");
+    // Close plays for 220 ms before the route returns to the library.
+    lib.clock.advance(Duration::from_millis(300));
+    settle(cx, handle, &view);
     let (route, focused, selected) = with_view(cx, handle, &view, |v, _, _| {
         (v.route(), v.vm().focused(), v.vm().selected_ids())
     });

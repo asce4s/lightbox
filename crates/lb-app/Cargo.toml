@@ -30,11 +30,14 @@ lb-faces = { path = "../lb-faces", optional = true }
 lb-video = { path = "../lb-video", optional = true }
 lb-geo = { path = "../lb-geo", optional = true }
 lb-picasa = { path = "../lb-picasa" }
+lb-ipc = { path = "../lb-ipc" }
+lb-assoc = { path = "../lb-assoc" }
 blake3 = { workspace = true }
+percent-encoding = { workspace = true }
 chrono = { workspace = true }
 opener = { workspace = true }
 trash = { workspace = true }
-image = { workspace = true, features = ["jpeg", "png"] }
+image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 crossbeam-channel = { workspace = true }
 directories = { workspace = true }
 indexmap = { workspace = true }

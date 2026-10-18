@@ -7,9 +7,13 @@ use crate::viewer::{
     FolderRefresh, FolderWatch, Motion, MotionMode, NavSet, Presented, RectF, ViewerEntry,
     entry_error, entry_from_id,
 };
-use lb_core::{Photo, PhotoId};
+use lb_core::{EditOp, Photo, PhotoId, RootMode};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+/// Shown when a file outside the library is rotated (SPEC-VIEWER §V8.2).
+pub const UNSAVED_ROTATION_HINT: &str =
+    "Rotation isn't saved — add this folder to Lightbox to keep edits";
 
 /// Smallest and largest zoom factor.
 pub const ZOOM_LIMITS: (f32, f32) = (0.05, 16.0);
@@ -47,6 +51,8 @@ pub struct ViewerVm {
     zoom: ZoomMode,
     pan: (f32, f32),
     show_info: bool,
+    /// Quarter turns applied only in this session, for a file that is not a catalog photo.
+    view_turns: i8,
     motion: Motion,
 }
 
@@ -65,6 +71,7 @@ impl ViewerVm {
             zoom: ZoomMode::Fit,
             pan: (0.0, 0.0),
             show_info: false,
+            view_turns: 0,
             motion: Motion::new(MotionMode::Full, (0.0, 0.0)),
         };
         vm.sync();
@@ -87,10 +94,85 @@ impl ViewerVm {
             zoom: ZoomMode::Fit,
             pan: (0.0, 0.0),
             show_info: false,
+            view_turns: 0,
             motion: Motion::new(MotionMode::Full, (0.0, 0.0)),
         };
         vm.sync();
         Ok(vm)
+    }
+
+    /// Star, rating and edit apply only to an indexed readable photo (SPEC-VIEWER §V8.2).
+    #[must_use]
+    pub fn can_star(&self) -> bool {
+        self.current_photo().is_some()
+    }
+
+    /// Edit (`E`) uses the same rule as [`Self::can_star`].
+    #[must_use]
+    pub fn can_edit(&self) -> bool {
+        self.can_star()
+    }
+
+    /// Session-only quarter turns for a non-catalog file. Catalog photos stay at 0.
+    #[must_use]
+    pub fn view_turns(&self) -> i8 {
+        self.view_turns
+    }
+
+    /// Hint chip while a non-catalog rotation is on screen.
+    #[must_use]
+    pub fn rotation_hint(&self) -> Option<&'static str> {
+        (self.view_turns != 0).then_some(UNSAVED_ROTATION_HINT)
+    }
+
+    /// Rotates the current entry. Catalog photos push `RotateQuarter`; other files rotate
+    /// for this session only.
+    pub fn rotate(&mut self, turns: i8) -> Result<()> {
+        if let Some(id) = self.current_photo() {
+            self.lb.edits().push(id, EditOp::RotateQuarter { turns })?;
+            self.view_turns = 0;
+            return Ok(());
+        }
+        self.view_turns = add_quarters(self.view_turns, turns);
+        Ok(())
+    }
+
+    /// Toggles the star. Returns `false` when the entry is not a catalog photo.
+    pub fn toggle_star(&mut self) -> Result<bool> {
+        let Some(id) = self.current_photo() else {
+            return Ok(false);
+        };
+        let starred = self.lb.photos().get(id)?.is_some_and(|photo| photo.starred);
+        self.lb.photos().set_starred(&[id], !starred)?;
+        Ok(true)
+    }
+
+    /// Catalog photos use the existing delete-to-trash path. Other files are moved with
+    /// [`TrashBackend`](lb_core::TrashBackend) and are never hard-deleted.
+    pub fn delete_current(&mut self) -> Result<()> {
+        if let Some(id) = self.current_photo() {
+            self.lb.photos().delete(&[id])?;
+            return Ok(());
+        }
+        let path = self.current_entry().path.clone();
+        self.lb.inner.trash.trash(&path)?;
+        Ok(())
+    }
+
+    /// Adds the current file's parent folder and re-resolves the entry so catalog actions apply.
+    pub fn add_folder(&mut self, mode: RootMode) -> Result<Option<PhotoId>> {
+        let dir = self
+            .current_entry()
+            .path
+            .parent()
+            .map(Path::to_path_buf)
+            .filter(|dir| !dir.as_os_str().is_empty())
+            .ok_or_else(|| crate::error::AppError::Invalid("file has no parent folder".into()))?;
+        self.lb.library().add_root(&dir, mode)?;
+        self.refresh()?;
+        self.nav.reresolve_current(&self.lb)?;
+        self.sync();
+        Ok(self.current_photo())
     }
 
     /// The entry on screen.
@@ -204,6 +286,7 @@ impl ViewerVm {
         self.sync();
         self.zoom = ZoomMode::Fit;
         self.pan = (0.0, 0.0);
+        self.view_turns = 0;
         true
     }
 
@@ -278,6 +361,18 @@ impl ViewerVm {
         self.pan = (0.0, 0.0);
     }
 
+    /// `0` and the Fit button.
+    pub fn zoom_to_fit(&mut self) {
+        self.zoom = ZoomMode::Fit;
+        self.pan = (0.0, 0.0);
+    }
+
+    /// The 1:1 button.
+    pub fn zoom_to_actual(&mut self) {
+        self.zoom = ZoomMode::Actual;
+        self.pan = (0.0, 0.0);
+    }
+
     /// `I`.
     pub fn toggle_info(&mut self) {
         self.show_info = !self.show_info;
@@ -319,4 +414,8 @@ impl ViewerVm {
         }
         true
     }
+}
+
+fn add_quarters(current: i8, delta: i8) -> i8 {
+    i8::try_from((i32::from(current) + i32::from(delta)).rem_euclid(4)).unwrap_or(0)
 }

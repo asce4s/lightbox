@@ -1,5 +1,6 @@
 //! What the viewer can show, and the set it can move through (SPEC-VIEWER §V1.2).
 
+use serde::{Deserialize, Serialize};
 use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -13,7 +14,8 @@ use crate::error::{AppError, Result};
 use crate::lightbox::Lightbox;
 
 /// How a folder's files are ordered. The default is natural file name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FolderSort {
     /// `img2` before `img02` before `img10`.
     #[default]
@@ -152,6 +154,17 @@ impl NavSet {
         } else {
             self.index = index.min(self.entries.len() - 1);
         }
+    }
+
+    /// Looks up the current path in the catalog again (after the folder is added).
+    pub fn reresolve_current(&mut self, lb: &Lightbox) -> Result<()> {
+        if self.entries.is_empty() {
+            return Ok(());
+        }
+        let path = self.current().path.clone();
+        let index = self.index;
+        self.entries[index] = resolve_entry(lb, &path)?;
+        Ok(())
     }
 
     /// Moves to `index`. Same index and out-of-range indexes do nothing.

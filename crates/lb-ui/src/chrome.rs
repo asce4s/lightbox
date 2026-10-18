@@ -42,6 +42,14 @@ impl LightboxWindow {
             )
             .child(div().flex_1())
             .child(
+                Button::new(ids::SETTINGS_BUTTON)
+                    .label("Settings")
+                    .tooltip("Photo viewer and file types")
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.open_viewer_settings(window, cx);
+                    })),
+            )
+            .child(
                 Button::new(ids::THEME_TOGGLE)
                     .label(match self.theme {
                         lb_app::ThemeChoice::System => "Theme: System",

@@ -1,6 +1,7 @@
 //! Row layout of the virtualized grid (SPEC §9.3).
 
 use crate::search::Group;
+use crate::viewer::RectF;
 use std::ops::Range;
 
 /// Height of a group header row in pixels.
@@ -143,6 +144,28 @@ impl GridLayout {
             }
         }
         hits
+    }
+
+    /// Content-space rectangle of the cell `(group, index)` (SPEC-VIEWER §V4.2).
+    ///
+    /// The origin is the top-left of the first cell, not the window. `None` when that photo
+    /// is not in the layout.
+    pub fn cell_rect(&self, group: usize, index: usize) -> Option<RectF> {
+        let row = self.row_of(group, index)?;
+        let GridRow::Cells { start, len, .. } = self.rows[row] else {
+            return None;
+        };
+        if index < start || index >= start + len {
+            return None;
+        }
+        let col = index - start;
+        let pitch = self.cell + GAP;
+        Some(RectF {
+            x: col as f32 * pitch,
+            y: self.row_top(row),
+            w: self.cell,
+            h: self.cell,
+        })
     }
 
     /// The row holding cell `index` of `group`.
