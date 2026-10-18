@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -45,11 +45,12 @@ jobs:
         shell: bash
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
+          LIGHTBOX_REQUIRE_APPIMAGE: ${{ runner.os == 'Linux' && '1' || '0' }}
         run: cargo xtask package
 
       - uses: actions/upload-artifact@v4
         with:
-          name: lightbox-${{ matrix.os }}
+          name: lightbox-${{ runner.os }}-${{ runner.arch }}
           path: dist/*.*
           if-no-files-found: error
 
@@ -68,4 +69,85 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" artifacts/* --repo "${{ github.repository }}" --generate-notes --draft
+        run: |
+          set -euo pipefail
+          cd artifacts
+          sha256sum -- * > SHA256SUMS
+          tag="${GITHUB_REF_NAME}"
+          title="Lightbox ${tag#v}"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" ./* --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$tag" ./* --repo "${{ github.repository }}" --generate-notes --title "$title"
+          fi
+
+  aur:
+    name: publish lightbox-bin to the AUR
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Check AUR key
+        id: key
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "${AUR_SSH_PRIVATE_KEY}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "AUR_SSH_PRIVATE_KEY is not set; skipping AUR publish"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            install -m 700 -d "$HOME/.ssh"
+            printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$HOME/.ssh/aur"
+            chmod 600 "$HOME/.ssh/aur"
+          fi
+
+      - name: Install tools
+        if: steps.key.outputs.present == 'true'
+        run: pacman -Syu --noconfirm --needed git openssh curl ca-certificates
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
+
+      - name: Publish PKGBUILD
+        if: steps.key.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          export GIT_SSH_COMMAND="ssh -i ${HOME}/.ssh/aur -o IdentitiesOnly=yes"
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9A-Za-z._+-]+$ ]]; then
+            echo "refusing tag version: ${version}" >&2
+            exit 1
+          fi
+          sums="$(curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/SHA256SUMS")"
+          sum="$(printf '%s\n' "$sums" | awk '/-linux-.*\.tar\.gz$/ { print $1; exit }')"
+          if ! [[ "$sum" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "linux tarball checksum not found in SHA256SUMS" >&2
+            exit 1
+          fi
+          cd packaging/aur/lightbox-bin
+          sed -i "s/^pkgver=.*/pkgver=${version}/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${sum}')/" PKGBUILD
+
+          if ! id builder >/dev/null 2>&1; then
+            useradd --create-home builder
+          fi
+          chown -R builder:builder .
+          runuser -u builder -- makepkg --printsrcinfo > .SRCINFO
+
+          ssh-keyscan -H aur.archlinux.org >> "${HOME}/.ssh/known_hosts"
+          pkgdir="$(pwd)"
+          work="$(mktemp -d)"
+          git clone "ssh://aur@aur.archlinux.org/lightbox-bin.git" "$work/repo"
+          git -C "$work/repo" checkout -B master
+          cp "$pkgdir/PKGBUILD" "$pkgdir/.SRCINFO" "$work/repo/"
+          git -C "$work/repo" add PKGBUILD .SRCINFO
+          if git -C "$work/repo" diff --cached --quiet; then
+            echo "AUR package already matches ${version}"
+            exit 0
+          fi
+          git -C "$work/repo" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            -c user.name="github-actions[bot]" \
+            commit -m "Update to ${version}"
+          git -C "$work/repo" push -u origin master
