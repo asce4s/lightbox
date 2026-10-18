@@ -7,6 +7,7 @@ mod motion;
 mod perf;
 mod playback;
 mod service;
+mod tiles;
 mod transform;
 
 pub use ambient::{AmbientCache, bucket_stage};
@@ -22,6 +23,10 @@ pub use playback::{
     save_checker_png, save_rgba_png,
 };
 pub use service::ViewerService;
+pub use tiles::{
+    DecodedTile, HUGE_PIXELS, TILE_PX, TileRef, TileSource, decode_visible, needs_tiles,
+    visible_tiles,
+};
 
 pub use motion::{
     LayerState, Motion, MotionMode, Presented, ease_in_cubic, ease_in_out_cubic, ease_out_cubic,
