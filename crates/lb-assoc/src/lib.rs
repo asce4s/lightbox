@@ -17,6 +17,37 @@ pub use linux::{
     desktop_entry, edit_mimeapps, quote_exec, restore_mimeapps, strip_desktop_id,
 };
 pub use macos::{BUNDLE_ID, MacosAssoc, current_is_bundled, document_types_xml, info_plist};
+
+use std::path::Path;
+
+/// Whether this process is an installed app rather than `cargo test` or `cargo run`.
+///
+/// Those binaries live under `target/debug` or `target/release`. On macOS an installed
+/// build must also be a `.app` bundle. The first-run banner uses this so dev builds stay quiet.
+pub fn running_as_installed_app() -> bool {
+    let Ok(exe) = std::env::current_exe() else {
+        return false;
+    };
+    if cargo_target_binary(&exe) {
+        return false;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        current_is_bundled()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        true
+    }
+}
+
+fn cargo_target_binary(path: &Path) -> bool {
+    let text = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
+    text.contains("/target/debug/") || text.contains("/target/release/")
+}
 #[cfg(windows)]
 pub use windows::Hkcu;
 pub use windows::{

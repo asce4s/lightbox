@@ -43,6 +43,11 @@ pub fn write_jpeg(path: &Path, seed: u8) {
 
 /// `spec` lists `(folder, file names)`; names like `IMG_20210615_120000.jpg` fix the capture date.
 pub fn ui_library(spec: &[(&str, &[&str])]) -> UiLib {
+    ui_library_with(spec, LightboxOptions::default())
+}
+
+/// Like [`ui_library`], keeping `options.assoc` and `options.force_default_prompt`.
+pub fn ui_library_with(spec: &[(&str, &[&str])], mut options: LightboxOptions) -> UiLib {
     let home = tempfile::tempdir().unwrap();
     let photos = tempfile::tempdir().unwrap();
     let trash_dir = tempfile::tempdir().unwrap();
@@ -60,13 +65,10 @@ pub fn ui_library(spec: &[(&str, &[&str])]) -> UiLib {
     let clock = Arc::new(FakeClock::new());
     let trash = Arc::new(FakeTrash::new(trash_dir.path().join("trash")));
     let opener = Arc::new(FakeOpener::new());
-    let options = LightboxOptions {
-        clock: clock.clone(),
-        spawn_event_ticker: false,
-        trash: trash.clone(),
-        opener: opener.clone(),
-        ..LightboxOptions::default()
-    };
+    options.clock = clock.clone();
+    options.spawn_event_ticker = false;
+    options.trash = trash.clone();
+    options.opener = opener.clone();
     let app = Lightbox::open_with(home.path(), lb_app::JobQueue::inline(), options).unwrap();
     app.library()
         .add_root(photos.path(), RootMode::Watch)

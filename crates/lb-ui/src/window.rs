@@ -83,6 +83,8 @@ pub enum Overlay {
         /// Keeps the field subscription alive.
         _sub: Subscription,
     },
+    /// Photo viewer options and file types.
+    Settings,
 }
 
 /// Root view of the library.
@@ -98,6 +100,7 @@ pub struct LightboxWindow {
     pub(crate) search: Entity<InputState>,
     pub(crate) zoom: Entity<SliderState>,
     pub(crate) overlay: Overlay,
+    pub(crate) settings_panel: Option<crate::settings_viewer::ViewerSettingsState>,
     pub(crate) toast: Option<String>,
     pub(crate) thumbs: HashMap<(PhotoId, ThumbSize), PathBuf>,
     requested: HashSet<(PhotoId, ThumbSize)>,
@@ -180,6 +183,7 @@ impl LightboxWindow {
             search,
             zoom,
             overlay: Overlay::None,
+            settings_panel: None,
             toast: None,
             thumbs: HashMap::new(),
             requested: HashSet::new(),
@@ -668,6 +672,7 @@ impl LightboxWindow {
     /// Closes any overlay and returns keyboard focus to the grid.
     pub fn close_overlay(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.overlay = Overlay::None;
+        self.settings_panel = None;
         window.focus(&self.focus, cx);
         cx.notify();
     }

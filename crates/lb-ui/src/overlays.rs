@@ -563,6 +563,7 @@ impl LightboxWindow {
                         .into_any_element(),
                 )
             }
+            Overlay::Settings => Some(self.render_settings_overlay(cx)),
         }
     }
 

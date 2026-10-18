@@ -71,6 +71,11 @@ pub use launch::{
     Launch, MACOS_OPEN_URL_WAIT, MacosDecision, Platform, apply_startup, file_url, macos_route,
     open_library_from_viewer, parse_launch, unregister_file_types,
 };
+pub use lb_assoc::Result as AssocResult;
+pub use lb_assoc::{
+    AppInstall, AssocBackend, AssocError, AssocStatus, FormatAssoc, MakeDefaultOutcome,
+    MakeDefaultResult, running_as_installed_app,
+};
 pub use lb_jobs::JobQueue;
 pub use lb_scan::ScanSummary;
 pub use lb_thumbs::ThumbSize;

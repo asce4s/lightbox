@@ -67,12 +67,20 @@ impl Render for LightboxWindow {
                             .size_range(px(200.)..px(480.))
                             .child(info_panel),
                     );
-                root.child(self.render_title_bar(cx))
-                    .child(self.render_chips(cx))
-                    .child(div().flex_1().min_h_0().child(main))
-                    .child(self.render_timeline(cx))
-                    .child(self.render_tray(cx))
-                    .child(self.render_status_bar(window, cx))
+                {
+                    let column = root.child(self.render_title_bar(cx));
+                    let column = if self.show_default_viewer_banner() {
+                        column.child(self.render_default_viewer_banner(cx))
+                    } else {
+                        column
+                    };
+                    column
+                        .child(self.render_chips(cx))
+                        .child(div().flex_1().min_h_0().child(main))
+                        .child(self.render_timeline(cx))
+                        .child(self.render_tray(cx))
+                        .child(self.render_status_bar(window, cx))
+                }
             }
             Route::Viewer | Route::Library => root,
         };

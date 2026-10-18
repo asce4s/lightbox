@@ -23,9 +23,10 @@ current status of every task.
 The services, view-models and command line cover every feature of the specification and are
 tested end to end. Some dialogs of the GUI are not drawn yet and are available through
 `lightbox-cli` (or the service layer) only: import from a card or folder, duplicates review,
-collage, batch rename, the map panel, the settings dialog (the title-bar button toggles the
-theme), the People face grid with naming and merging, and the Picasa import preview.
-`TASKS.md` (Decisions) lists what is deferred and why.
+collage, batch rename, the map panel, settings sections other than Photo viewer & file types,
+the People face grid with naming and merging, and the Picasa import preview.
+`TASKS.md` (Decisions) lists what is deferred and why. The title-bar gear opens
+**Photo viewer & file types**. The theme button still cycles the colour scheme.
 
 ## Install
 
@@ -128,6 +129,37 @@ platform's per-user data and cache directories are used.
 | Editor | `Enter` / `Esc` | Apply / cancel the open tool, `Esc` again leaves the editor |
 | Editor, crop tool | Arrow keys (`Shift` = 10 px) | Nudge the crop |
 | Slideshow | `Space`, `Left` / `Right`, `Esc` | Play or pause, previous / next, exit |
+
+## Default photo viewer
+
+Starting Lightbox registers it as an *available* viewer for the picture types it can open. It
+does not change the app that currently opens those files. Becoming the default is a separate
+step: the gear in the title bar opens **Photo viewer & file types**, where you tick the types
+and choose **Make Lightbox the default photo viewer**. The same action is on the first-run
+banner ("Open photos from your file manager with Lightbox?"). **Not now** hides that banner
+for good. **Restore previous defaults** puts back the handlers recorded before that change,
+when the operating system let Lightbox read them.
+
+What the button can do depends on the system:
+
+| System | Available (every launch) | Default |
+|---|---|---|
+| Linux | `app.lightbox.Viewer.desktop` with a `MimeType` line, plus an icon | writes `mimeapps.list` (and an existing desktop-specific list) under `$XDG_CONFIG_HOME` |
+| Windows | per-user ProgID and Open With entries under `HKCU` | opens Settings → Default Apps; Windows does not let an app write the default itself |
+| macOS | document types in `Info.plist` (`LSHandlerRank` Alternate) | the installed app opens the system confirmation; a dev build cannot |
+
+Flatpak and Snap builds are out of scope: those packages hand associations to the portal, and
+this desktop file is not how they register types.
+
+Uninstall (or moving the binary) should drop the entries Lightbox added:
+
+```sh
+lightbox --unregister-file-types
+```
+
+On Linux that removes the viewer desktop file, the icon, and mimeapps lines that point at
+Lightbox. On Windows it deletes only the keys recorded in Lightbox's association manifest.
+On macOS there is nothing to remove at uninstall time; document types leave with the `.app`.
 
 ## Command line
 

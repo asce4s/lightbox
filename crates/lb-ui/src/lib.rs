@@ -9,6 +9,7 @@ mod editor;
 mod hello;
 mod overlays;
 mod render;
+mod settings_viewer;
 mod slideshow;
 mod stage;
 mod timeline;

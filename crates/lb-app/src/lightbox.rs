@@ -6,6 +6,7 @@ use crate::history::HistoryService;
 use crate::paths::AppPaths;
 use crate::system::{SystemOpener, SystemTrash};
 use crossbeam_channel::Receiver;
+use lb_assoc::AssocBackend;
 use lb_catalog::Catalog;
 use lb_core::{Clock, Opener, SystemClock, TrashBackend};
 use lb_jobs::JobQueue;
@@ -35,6 +36,10 @@ pub struct LightboxOptions {
     /// inject the mocks.
     #[cfg(feature = "faces")]
     pub face_pipeline: Option<Arc<lb_faces::FacePipeline>>,
+    /// File-type backend. `None` uses the operating system. Tests inject a fake.
+    pub assoc: Option<Arc<dyn AssocBackend + Send + Sync>>,
+    /// Show the first-run default-viewer banner even when this process is not an installed app.
+    pub force_default_prompt: bool,
 }
 
 impl Default for LightboxOptions {
@@ -48,6 +53,8 @@ impl Default for LightboxOptions {
             tile_provider: None,
             #[cfg(feature = "faces")]
             face_pipeline: None,
+            assoc: None,
+            force_default_prompt: false,
         }
     }
 }
@@ -70,6 +77,8 @@ pub(crate) struct Inner {
     pub(crate) map: crate::map::MapState,
     #[cfg(feature = "faces")]
     pub(crate) faces: crate::faces::FaceState,
+    pub(crate) assoc: Option<Arc<dyn AssocBackend + Send + Sync>>,
+    pub(crate) force_default_prompt: bool,
 }
 
 /// An open Lightbox library. Cheap to clone; all clones share the same state.
@@ -170,8 +179,20 @@ impl Lightbox {
                 map: crate::map::MapState::new(options.tile_provider),
                 #[cfg(feature = "faces")]
                 faces: crate::faces::FaceState::new(options.face_pipeline),
+                assoc: options.assoc,
+                force_default_prompt: options.force_default_prompt,
             }),
         })
+    }
+
+    /// File-type backend injected by a test. Production leaves this empty and uses the OS.
+    pub fn associations(&self) -> Option<Arc<dyn AssocBackend + Send + Sync>> {
+        self.inner.assoc.clone()
+    }
+
+    /// Whether the library should show the first-run viewer banner in this process.
+    pub fn force_default_prompt(&self) -> bool {
+        self.inner.force_default_prompt
     }
 
     /// A new receiver of application events.
